@@ -119,13 +119,13 @@ describe('progress sync', () => {
 describe('admin', () => {
   it('lists players, resets a game, and bans', async () => {
     const player = await signIn('player@example.com');
-    await call('/api/games/scrum-city/progress', { method: 'PUT', token: player.token, origin: GAME, body: { data: { v: 2, money: 4200, weapons: { owned: { fist: true, pistol: true, minigun: true } }, stats: { kills: 9 } }, rev: 0 } });
+    await call('/api/games/scrum-city/progress', { method: 'PUT', token: player.token, origin: GAME, body: { data: { v: 2, money: 4200, weapons: { owned: { fist: true, pistol: true, minigun: true } }, stats: { kills: 9, fiveStar: 125.7 } }, rev: 0 } });
     const boss = await signIn('boss@example.com');
     // a player is not an admin
     expect((await call('/api/admin/players', { cookie: player.cookie })).status).toBe(403);
     const list = await (await call('/api/admin/players', { cookie: boss.cookie })).json();
     const row = list.players.find(p => p.email === 'player@example.com');
-    expect(row.games[0].summary).toEqual({ money: 4200, weapons: ['pistol', 'minigun'], kills: 9 });
+    expect(row.games[0].summary).toEqual({ money: 4200, weapons: ['pistol', 'minigun'], kills: 9, fiveStar: 125 });
     // writes need our own page as the origin
     expect((await call(`/api/admin/players/${row.id}/reset`, { method: 'POST', cookie: boss.cookie, origin: 'https://evil.example', body: { game: 'scrum-city' } })).status).toBe(403);
     expect((await call(`/api/admin/players/${row.id}/reset`, { method: 'POST', cookie: boss.cookie, origin: APP, body: { game: 'scrum-city' } })).status).toBe(200);
