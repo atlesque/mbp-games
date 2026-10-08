@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MBP Games account</title>
 <meta name="description" content="One MBP Games account for every MBP game: sign in once, keep your progress.">
-<link rel="stylesheet" href="/style.css?v=2">
+<link rel="stylesheet" href="/style.css?v=3">
 <link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <script src="/theme.js?v=2"></script>
 </head>
@@ -21,6 +21,8 @@ const ago = t => {
   const m = Math.round((Date.now() - t) / 60000);
   return m < 1 ? 'Just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 2880 ? 'Yesterday' : new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' });
 };
+// seconds as a clock: 75 -> '1:15', 3725 -> '1:02:05'
+const clock = s => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = String(Math.floor(s / 60) % 60), ss = String(s % 60).padStart(2, '0'); return h ? `${h}:${m.padStart(2, '0')}:${ss}` : `${m}:${ss}`; };
 const short = n => n.replace(/^MBP\s*-\s*/, '');
 const initials = n => short(n).split(/\s+/).map(w => w[0]).join('').slice(0, 2);
 fetch('/api/account').then(r => r.json()).then(a => {
@@ -40,6 +42,7 @@ fetch('/api/account').then(r => r.json()).then(a => {
 <div><div class="t">${esc(g.name)}</div><div class="st">Saved ${esc(when(g.updatedAt))}</div></div>
 <div class="hide-sm">${s && s.money != null ? `<div class="st">Money</div><div class="num">$${s.money.toLocaleString()}</div>` : ''}</div>
 <div class="hide-sm">${s && s.weapons ? `<div class="st">Weapons</div><div class="num">${s.weapons.length}</div>` : ''}</div>
+<div class="hide-sm">${s && s.fiveStar != null ? `<div class="st" title="Total time spent at five stars">5★ heat</div><div class="num">${clock(s.fiveStar)}</div>` : ''}</div>
 <div>${g.url ? `<a class="sbtn lime" href="${esc(g.url)}" aria-label="Play ${name}">Play</a>` : ''}</div></div>`;
   }).join('') || '<p class="muted" style="margin:14px 0 0">No saved games yet. Sign in from a game and your progress shows up here.</p>';
   view.innerHTML = `${a.banned ? '<div class="panel err" style="margin-top:0">This account is banned.</div>' : ''}<div class="hub">

@@ -15,7 +15,9 @@ export const GAMES = {
     summary(d) {
       const w = (d && d.weapons) || {};
       const owned = Object.keys(w.owned || {}).filter(id => w.owned[id] && id !== 'fist');
-      return { money: d && typeof d.money === 'number' ? d.money : null, weapons: owned, kills: d && d.stats ? d.stats.kills || 0 : 0 };
+      return { money: d && typeof d.money === 'number' ? d.money : null, weapons: owned, kills: d && d.stats ? d.stats.kills || 0 : 0,
+        // five star heat highscore: whole seconds spent at five stars, ever
+        fiveStar: d && d.stats ? Math.floor(d.stats.fiveStar || 0) : 0 };
     },
   },
 };
