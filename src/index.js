@@ -208,7 +208,7 @@ async function account(req, env) {
   const u = await webUser(req, env);
   if (!u) return json({ user: null });
   const rows = (await env.DB.prepare('SELECT game, data, rev, updated_at FROM progress WHERE user_id = ? ORDER BY updated_at DESC').bind(u.id).all()).results;
-  return json({ user: publicUser(u), banned: !!u.banned_at, admin: isAdmin(env, u), games: rows.map(r => gameRow(r)) });
+  return json({ user: publicUser(u), memberSince: u.created_at, banned: !!u.banned_at, admin: isAdmin(env, u), games: rows.map(r => gameRow(r)) });
 }
 function gameRow(r) {
   const g = GAMES[r.game], d = r.data ? JSON.parse(r.data) : null;
@@ -240,7 +240,8 @@ async function confirmLink(req, env) {
 }
 function page(title, body, status = 200, headers = {}) {
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>${esc(title)} · MBP Games</title><link rel="stylesheet" href="/style.css?v=1"></head><body><main class="card"><p class="brand">MBP Games</p>${body}</main></body></html>`,
+<title>${esc(title)} · MBP Games</title><link rel="stylesheet" href="/style.css?v=2"><script src="/theme.js?v=2"></script></head>
+<body><header class="nav"><a class="logo" href="/"><span class="mark"></span>MBP Games</a></header><main class="card narrow">${body}</main></body></html>`,
   { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin', ...headers } });
 }
 
