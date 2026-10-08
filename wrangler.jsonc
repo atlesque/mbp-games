@@ -13,5 +13,12 @@
   // ADMIN_EMAILS (comma-separated) is a secret set in the dashboard, so it isn't in the repo
   "keep_vars": true,
   "triggers": { "crons": ["17 3 * * *"] },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Worker Previews (PR branch builds) use their own empty database, never the live accounts.
+  // New migrations: npx wrangler d1 migrations apply mbp-games-preview --remote --config wrangler.preview-migrations.jsonc
+  "previews": {
+    "vars": { "MAIL_FROM": "noreply@atlesque.dev", "MAIL_FROM_NAME": "MBP Games (preview)" },
+    "d1_databases": [{ "binding": "DB", "database_name": "mbp-games-preview", "database_id": "a8b30968-5ab2-4c3e-b47b-b17105738936" }],
+    "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["noreply@atlesque.dev"] }]
+  }
 }
