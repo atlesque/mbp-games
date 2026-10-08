@@ -1,0 +1,6 @@
+// Only for applying migrations to the Preview database (see "previews" in wrangler.jsonc); never deployed.
+{
+  "name": "mbp-games",
+  "compatibility_date": "2026-09-01",
+  "d1_databases": [{ "binding": "DB", "database_name": "mbp-games-preview", "database_id": "a8b30968-5ab2-4c3e-b47b-b17105738936", "migrations_dir": "migrations" }]
+}
