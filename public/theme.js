@@ -1,16 +1,27 @@
-// Light or dark: the device's setting until the player picks one with the header button, then their pick.
+// Light, dark or auto: auto (the default) follows the device's setting live; the header button cycles light → dark → auto and remembers the pick.
 // Loaded in <head> so the page never flashes the wrong theme.
 (() => {
-  const KEY = 'mbpg_theme', root = document.documentElement;
+  const KEY = 'mbpg_theme', root = document.documentElement, ORDER = ['light', 'dark', 'auto'];
+  const LABEL = { light: 'Light theme', dark: 'Dark theme', auto: 'Auto theme, follows your device' };
   const get = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
+  const apply = mode => {
+    root.dataset.mode = mode;
+    // style.css follows prefers-color-scheme on its own while data-theme is unset, so auto updates live.
+    if (mode === 'auto') delete root.dataset.theme; else root.dataset.theme = mode;
+    document.querySelectorAll('[data-theme-toggle]').forEach(b => {
+      const next = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length];
+      b.setAttribute('aria-label', `${LABEL[mode]}. Switch to ${next}`);
+      b.title = LABEL[mode];
+    });
+  };
   const saved = get();
-  if (saved === 'light' || saved === 'dark') root.dataset.theme = saved;
-  const current = () => root.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  let mode = ORDER.includes(saved) ? saved : 'auto';
+  apply(mode);
+  document.addEventListener('DOMContentLoaded', () => apply(mode));
   document.addEventListener('click', e => {
-    const b = e.target.closest('[data-theme-toggle]');
-    if (!b) return;
-    const next = current() === 'light' ? 'dark' : 'light';
-    root.dataset.theme = next;
-    try { localStorage.setItem(KEY, next); } catch (e) {}
+    if (!e.target.closest('[data-theme-toggle]')) return;
+    mode = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length];
+    apply(mode);
+    try { localStorage.setItem(KEY, mode); } catch (e) {}
   });
 })();

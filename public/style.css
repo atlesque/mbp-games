@@ -1,4 +1,4 @@
-/* MBP Games: dark by default, light when the device asks for it or the player picks it (theme.js) */
+/* MBP Games: follows the device (auto) unless the player picks light or dark (theme.js) */
 @font-face{font-family:'Inter';src:url(/fonts/inter.woff2) format('woff2');font-weight:100 900;font-display:swap}
 :root{
   --bg:#0a0a0f; --surface:#14141c; --surface-2:#1c1c27; --line:rgba(255,255,255,.07); --hair:rgba(255,255,255,.25);
@@ -56,10 +56,9 @@ b{font-weight:620}
 .av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--pink));color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none;text-transform:uppercase}
 .iconbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);color:var(--ink);cursor:pointer;padding:0}
 .iconbtn svg{width:18px;height:18px}
-.iconbtn .sun{display:none}
-:root[data-theme=light] .iconbtn .sun{display:block}
-:root[data-theme=light] .iconbtn .moon{display:none}
-@media (prefers-color-scheme:light){:root:not([data-theme=dark]) .iconbtn .sun{display:block}:root:not([data-theme=dark]) .iconbtn .moon{display:none}}
+.iconbtn .sun,.iconbtn .auto{display:none}
+:root[data-mode=light] .iconbtn .sun,:root[data-mode=auto] .iconbtn .auto{display:block}
+:root[data-mode=light] .iconbtn .moon,:root[data-mode=auto] .iconbtn .moon{display:none}
 
 /* cards */
 .card,.panel{background:linear-gradient(180deg,var(--glass-a),var(--glass-b));border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
