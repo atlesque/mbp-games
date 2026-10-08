@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Sign in · MBP Games</title>
+<link rel="stylesheet" href="/style.css?v=1">
+</head>
+<body>
+<main class="card" aria-live="polite">
+  <p class="brand">MBP Games</p>
+  <div id="view"><p><span class="spin"></span>Loading…</p></div>
+</main>
+<script>
+// The hosted sign-in every MBP game sends players to. One email link both confirms the address and signs in;
+// this tab waits for it (the link can be opened on any device) and then goes back to the game.
+const q = Object.fromEntries(new URLSearchParams(location.search));
+const target = q.client ? { client: q.client, redirect_uri: q.redirect_uri, state: q.state, code_challenge: q.code_challenge } : { next: q.next };
+const view = document.getElementById('view');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const post = (path, body) => fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  .then(async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(d.message || 'Something went wrong.'), { code: d.error }); return d; });
+let game = null, timer = 0;
+const KEY = 'mbpg_wait:' + location.search; // a reload keeps waiting for the same link
+
+const gameName = () => game ? esc(game.name) : 'MBP Games';
+const backLink = () => game ? `<p class="small"><a href="${esc(game.url)}">Back to ${esc(game.name)} without signing in</a></p>` : '';
+
+function emailForm(msg) {
+  clearTimeout(timer); sessionStorage.removeItem(KEY);
+  view.innerHTML = `<h1>${game ? `Sign in to ${gameName()}` : 'Sign in'}</h1>
+<p class="muted">One MBP Games account for all our games. New here? The same email link creates your account. No password needed.</p>
+<form id="f"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required autofocus>
+<p id="msg" class="err" role="alert">${msg ? esc(msg) : ''}</p><button class="btn" id="go">Email me a sign-in link</button></form>${backLink()}`;
+  document.getElementById('f').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('go'), email = document.getElementById('email').value;
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      const r = await post('/api/signin/start', { email, ...target });
+      const w = { email, request: r.request, poll: r.poll };
+      sessionStorage.setItem(KEY, JSON.stringify(w)); waiting(w);
+    } catch (err) { document.getElementById('msg').textContent = err.message; btn.disabled = false; btn.textContent = 'Email me a sign-in link'; }
+  });
+}
+
+function waiting(w) {
+  view.innerHTML = `<h1>Check your inbox</h1><p>We sent a sign-in link to <b>${esc(w.email)}</b>. Open it, on this device or another one, and press <b>Sign in</b>.</p>
+<p><span class="spin"></span>This page carries on by itself once you have.</p>
+<p class="small">Nothing after a minute? Check your spam folder, or <a href="#" id="again">use a different email</a>.</p>`;
+  document.getElementById('again').addEventListener('click', e => { e.preventDefault(); emailForm(); });
+  const tick = async () => {
+    try {
+      const r = await post('/api/signin/poll', { request: w.request, poll: w.poll });
+      if (r.status === 'done') { sessionStorage.removeItem(KEY); view.innerHTML = `<h1>You're in</h1><p><span class="spin"></span>Taking you back to ${gameName()}…</p>`; location.replace(r.redirect); return; }
+      if (r.status === 'expired') return emailForm('That link ran out. Ask for a new one.');
+      if (r.status === 'used') return start(); // another tab finished it; we're signed in here now
+    } catch (err) { if (err.code === 'banned' || err.code === 'unknown') return emailForm(err.message); }
+    timer = setTimeout(tick, document.hidden ? 4000 : 2000);
+  };
+  timer = setTimeout(tick, 2000);
+}
+
+async function start() {
+  let s;
+  try {
+    const r = await fetch('/api/session?' + new URLSearchParams(Object.entries(q).filter(([k]) => ['client', 'redirect_uri', 'code_challenge', 'next'].includes(k))));
+    s = await r.json();
+    if (!r.ok) throw new Error(s.message);
+  } catch (err) { view.innerHTML = `<h1>Can't sign in from here</h1><p class="err">${esc(err.message || 'Something went wrong.')}</p>`; return; }
+  game = s.game;
+  const w = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+  if (w) return waiting(w);
+  if (!s.user) return emailForm();
+  view.innerHTML = `<h1>${game ? `Play ${gameName()}` : 'Welcome back'}</h1><p>You're signed in as <b>${esc(s.user.email)}</b>.</p>
+<p id="msg" class="err" role="alert"></p><button class="btn" id="cont" autofocus>Continue as ${esc(s.user.email)}</button>
+<p class="small"><a href="#" id="other">Use a different email</a></p>${backLink()}`;
+  document.getElementById('other').addEventListener('click', async e => { e.preventDefault(); await post('/api/signout', {}).catch(() => {}); emailForm(); });
+  document.getElementById('cont').addEventListener('click', async () => {
+    try { const r = await post('/api/signin/continue', target); location.replace(r.redirect); }
+    catch (err) { document.getElementById('msg').textContent = err.message; }
+  });
+}
+start();
+</script>
+</body>
+</html>
