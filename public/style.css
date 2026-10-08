@@ -1,0 +1,47 @@
+/* MBP Games: the same neon-at-dusk look as the games */
+:root{
+  --night:#140c26; --panel:#22163d; --line:#3a2b5e; --pink:#ff4fa3; --cyan:#3ef0ff; --cash:#86ff7a; --ink:#fff3fa; --dim:#c6afdc; --danger:#ff5a6a;
+  --f-ui:'Trebuchet MS',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--night);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.5}
+body{background:radial-gradient(ellipse at 50% -20%,#5b1f6e 0,transparent 60%),var(--night);min-height:100vh}
+a{color:var(--cyan)}
+h1{font-size:26px;line-height:1.2;margin:6px 0 10px}
+h2{font-size:18px;margin:24px 0 8px}
+.brand{margin:0;font-size:12px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--cyan)}
+.card{max-width:440px;margin:10vh auto 24px;padding:28px;background:var(--panel);border:1px solid var(--pink);border-radius:8px;box-shadow:0 0 40px rgba(255,79,163,.18)}
+@media (max-width:480px){.card{margin:16px;padding:22px 18px}}
+.wide{max-width:1100px;margin:24px auto;padding:0 16px}
+.small{font-size:13px;color:var(--dim)}
+.muted{color:var(--dim)}
+.err{color:var(--danger)}
+.ok{color:var(--cash)}
+label{display:block;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:14px 0 6px}
+input[type=email],input[type=text],input[type=search],select{width:100%;font:inherit;color:var(--ink);background:#170f2c;border:1px solid var(--line);border-radius:4px;padding:10px 12px}
+input:focus,select:focus{outline:2px solid var(--cyan);outline-offset:1px;border-color:transparent}
+.btn,.sbtn{display:inline-block;font:inherit;font-weight:700;cursor:pointer;border-radius:4px;text-decoration:none;text-align:center}
+.btn{background:var(--pink);color:var(--night);border:0;padding:11px 24px;margin-top:16px}
+.btn:hover{filter:brightness(1.1)}
+.sbtn{background:rgba(62,240,255,.1);color:var(--ink);border:1px solid var(--cyan);padding:7px 14px;font-size:14px}
+.sbtn:hover{background:rgba(62,240,255,.25)}
+.sbtn.danger{border-color:var(--danger);background:rgba(255,90,106,.12)}
+.sbtn.danger:hover{background:rgba(255,90,106,.3)}
+.btn:focus-visible,.sbtn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button[disabled]{opacity:.5;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--cyan);border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700}
+tr.pick{cursor:pointer}
+tr.pick:hover td{background:rgba(255,255,255,.04)}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--dim)}
+.tag.ban{border-color:var(--danger);color:var(--danger)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;margin:16px 0}
+.scroll{overflow-x:auto}
+pre{background:#170f2c;border:1px solid var(--line);border-radius:4px;padding:12px;font-size:12px;overflow:auto;max-height:320px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MBP Games account</title>
+<meta name="description" content="One MBP Games account for every MBP game: sign in once, keep your progress.">
+<link rel="stylesheet" href="/style.css?v=1">
+</head>
+<body>
+<main class="card">
+  <p class="brand">MBP Games</p>
+  <div id="view"><p><span class="spin"></span>Loading…</p></div>
+</main>
+<script>
+// The account hub: who you're signed in as and the games you've played.
+const view = document.getElementById('view');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const when = t => t ? new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'never';
+fetch('/api/account').then(r => r.json()).then(a => {
+  if (!a.user) {
+    view.innerHTML = `<h1>Your MBP Games account</h1><p class="muted">One account for all our games. Sign in with your email, no password needed.</p><a class="btn" href="/signin">Sign in</a>`;
+    return;
+  }
+  const games = a.games.length ? `<table><thead><tr><th>Game</th><th>Last saved</th></tr></thead><tbody>${a.games.map(g =>
+    `<tr><td>${g.url ? `<a href="${esc(g.url)}">${esc(g.name)}</a>` : esc(g.name)}${g.summary && g.summary.money != null ? `<br><span class="small">$${g.summary.money.toLocaleString()}</span>` : ''}</td><td>${esc(when(g.updatedAt))}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">No saved games yet. Sign in from a game and your progress shows up here.</p>';
+  view.innerHTML = `<h1>Your account</h1><p>Signed in as <b>${esc(a.user.email)}</b>.</p>${a.banned ? '<p class="err">This account is banned.</p>' : ''}
+<h2>Your games</h2>${games}<div class="row" style="margin-top:20px">${a.admin ? '<a class="sbtn" href="/admin">Admin</a>' : ''}<button class="sbtn" id="out">Sign out</button></div>`;
+  document.getElementById('out').addEventListener('click', () =>
+    fetch('/api/signout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).then(() => location.reload()));
+});
+</script>
+</body>
+</html>
