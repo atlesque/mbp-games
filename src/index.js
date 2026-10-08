@@ -240,7 +240,7 @@ async function confirmLink(req, env) {
 }
 function page(title, body, status = 200, headers = {}) {
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>${esc(title)} · MBP Games</title><link rel="stylesheet" href="/style.css?v=3"><script src="/theme.js?v=3"></script></head>
+<title>${esc(title)} · MBP Games</title><link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css?v=3"><script src="/theme.js?v=3"></script></head>
 <body><header class="nav"><a class="logo" href="/"><span class="mark"></span>MBP Games</a></header><main class="card narrow">${body}</main></body></html>`,
   { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin', ...headers } });
 }
