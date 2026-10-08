@@ -5,28 +5,50 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MBP Games account</title>
 <meta name="description" content="One MBP Games account for every MBP game: sign in once, keep your progress.">
-<link rel="stylesheet" href="/style.css?v=1">
+<link rel="stylesheet" href="/style.css?v=2">
+<link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<script src="/theme.js?v=2"></script>
 </head>
 <body>
-<main class="card">
-  <p class="brand">MBP Games</p>
-  <div id="view"><p><span class="spin"></span>Loading…</p></div>
-</main>
+<header class="nav"><a class="logo" href="/"><span class="mark"></span>MBP Games</a><div class="nav-r"><span id="me" class="row"></span><button class="iconbtn" data-theme-toggle aria-label="Switch between light and dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button></div></header>
+<main class="wrap" id="view"><p><span class="spin"></span>Loading…</p></main>
 <script>
 // The account hub: who you're signed in as and the games you've played.
 const view = document.getElementById('view');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const when = t => t ? new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'never';
+const ago = t => {
+  const m = Math.round((Date.now() - t) / 60000);
+  return m < 1 ? 'Just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 2880 ? 'Yesterday' : new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' });
+};
+const short = n => n.replace(/^MBP\s*-\s*/, '');
+const initials = n => short(n).split(/\s+/).map(w => w[0]).join('').slice(0, 2);
 fetch('/api/account').then(r => r.json()).then(a => {
   if (!a.user) {
-    view.innerHTML = `<h1>Your MBP Games account</h1><p class="muted">One account for all our games. Sign in with your email, no password needed.</p><a class="btn" href="/signin">Sign in</a>`;
+    view.innerHTML = `<div class="card" style="max-width:460px;margin:8vh auto 0"><p class="eyebrow"><span class="dot"></span>One account · every game</p>
+<h1>Your MBP Games account</h1><p class="muted">Sign in once with your email and your progress follows you to every MBP game. No password needed.</p><a class="btn" href="/signin">Sign in</a></div>`;
     return;
   }
-  const games = a.games.length ? `<table><thead><tr><th>Game</th><th>Last saved</th></tr></thead><tbody>${a.games.map(g =>
-    `<tr><td>${g.url ? `<a href="${esc(g.url)}">${esc(g.name)}</a>` : esc(g.name)}${g.summary && g.summary.money != null ? `<br><span class="small">$${g.summary.money.toLocaleString()}</span>` : ''}</td><td>${esc(when(g.updatedAt))}</td></tr>`).join('')}</tbody></table>`
-    : '<p class="muted">No saved games yet. Sign in from a game and your progress shows up here.</p>';
-  view.innerHTML = `<h1>Your account</h1><p>Signed in as <b>${esc(a.user.email)}</b>.</p>${a.banned ? '<p class="err">This account is banned.</p>' : ''}
-<h2>Your games</h2>${games}<div class="row" style="margin-top:20px">${a.admin ? '<a class="sbtn" href="/admin">Admin</a>' : ''}<button class="sbtn" id="out">Sign out</button></div>`;
+  const email = esc(a.user.email), letter = esc(a.user.email[0]);
+  document.getElementById('me').innerHTML = `${a.admin ? '<a class="sbtn" href="/admin">Admin</a>' : ''}<span class="chip"><span class="av">${letter}</span><span>${email}</span></span>`;
+  const money = a.games.reduce((sum, g) => sum + (g.summary && g.summary.money != null ? g.summary.money : 0), 0);
+  const total = k => a.games.reduce((n, g) => n + (!g.summary ? 0 : Array.isArray(g.summary[k]) ? g.summary[k].length : g.summary[k] || 0), 0).toLocaleString();
+  const last = a.games.reduce((t, g) => Math.max(t, g.updatedAt || 0), 0);
+  const rows = a.games.map(g => {
+    const s = g.summary, name = esc(short(g.name));
+    return `<div class="grow"><div class="gi">${esc(initials(g.name))}</div>
+<div><div class="t">${esc(g.name)}</div><div class="st">Saved ${esc(when(g.updatedAt))}</div></div>
+<div class="hide-sm">${s && s.money != null ? `<div class="st">Money</div><div class="num">$${s.money.toLocaleString()}</div>` : ''}</div>
+<div class="hide-sm">${s && s.weapons ? `<div class="st">Weapons</div><div class="num">${s.weapons.length}</div>` : ''}</div>
+<div>${g.url ? `<a class="sbtn lime" href="${esc(g.url)}" aria-label="Play ${name}">Play</a>` : ''}</div></div>`;
+  }).join('') || '<p class="muted" style="margin:14px 0 0">No saved games yet. Sign in from a game and your progress shows up here.</p>';
+  view.innerHTML = `${a.banned ? '<div class="panel err" style="margin-top:0">This account is banned.</div>' : ''}<div class="hub">
+<section class="card balance"><p class="eyebrow"><span class="dot"></span>Money across your games</p><div class="big">$${money.toLocaleString()}</div>
+<p class="muted">${a.games.length ? `Last saved ${esc(when(last))}` : 'Play a game to start earning'}</p>
+<div class="stats"><div class="stat"><div class="k">Weapons</div><div class="v">${total('weapons')}</div></div><div class="stat"><div class="k">Takedowns</div><div class="v">${total('kills')}</div></div><div class="stat"><div class="k">Saves</div><div class="v">${a.games.reduce((n, g) => n + (g.rev || 0), 0).toLocaleString()}</div></div></div></section>
+<section class="card profile"><div class="bigav">${letter}</div><h2>${email}</h2>${a.memberSince ? `<p class="muted" style="margin:4px 0 0">Member since ${esc(new Date(a.memberSince).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }))}</p>` : ''}
+<div class="stats"><div class="stat"><div class="k">Games played</div><div class="v">${a.games.length}</div></div><div class="stat"><div class="k">Last played</div><div class="v">${a.games.length ? esc(ago(last)) : '–'}</div></div></div></section>
+<section class="card games"><div class="top"><h2>Your games</h2><button class="sbtn" id="out">Sign out</button></div>${rows}</section></div>`;
   document.getElementById('out').addEventListener('click', () =>
     fetch('/api/signout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).then(() => location.reload()));
 });
