@@ -143,4 +143,21 @@ describe('admin', () => {
     await call(`/api/admin/players/${row.id}/unban`, { method: 'POST', cookie: boss.cookie, origin: APP, body: {} });
     expect((await call('/api/me', { token: player.token, origin: GAME })).status).toBe(200);
   });
+  it('lists pending registrations and whether their email went out', async () => {
+    const boss = await signIn('boss@example.com'), player = await signIn('player@example.com');
+    await call('/api/signin/start', { method: 'POST', origin: APP, body: { email: 'waiting@example.com' } });
+    env.EMAIL.send = async () => { throw Object.assign(new Error('bad recipient'), { code: 'E_RECIPIENT' }); };
+    expect((await call('/api/signin/start', { method: 'POST', origin: APP, body: { email: 'bounced@example.com' } })).status).toBe(502);
+    expect((await call('/api/admin/pending', { cookie: player.cookie })).status).toBe(403);
+    const d = await (await call('/api/admin/pending', { cookie: boss.cookie })).json();
+    // boss and player opened their links, so they have accounts and aren't pending
+    expect(d.total).toBe(2);
+    const by = Object.fromEntries(d.pending.map(r => [r.email, r]));
+    expect(by['waiting@example.com']).toMatchObject({ emails: 1, sent: 1, failed: 0, last: { status: 'sent', linkOpen: true } });
+    expect(by['bounced@example.com']).toMatchObject({ emails: 1, sent: 0, failed: 1, last: { status: 'failed', error: 'E_RECIPIENT: bad recipient', linkOpen: false } });
+    expect((await (await call('/api/admin/pending?q=bounce', { cookie: boss.cookie })).json()).pending.map(r => r.email)).toEqual(['bounced@example.com']);
+    const list = await (await call('/api/admin/players', { cookie: boss.cookie })).json();
+    const detail = await (await call(`/api/admin/players/${list.players.find(p => p.email === 'player@example.com').id}`, { cookie: boss.cookie })).json();
+    expect(detail.player.emails.map(e => e.status)).toEqual(['sent']);
+  });
 });
