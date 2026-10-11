@@ -1,5 +1,6 @@
 import { GAMES, anyGameOrigin, originAllowed, redirectAllowed } from './clients.js';
 import { sendSignInEmail, signInEmail } from './email.js';
+import { GameRoom } from './room.js';
 import { DAY, HOUR, HttpError, MIN, cookie, esc, getCookie, hash, json, normalizeEmail, now, pkceChallenge, randomToken, readJson } from './util.js';
 
 // ================= MBP GAMES ACCOUNTS =================
@@ -16,6 +17,9 @@ const LIMITS = { perEmail: [5, 15 * MIN], perIp: [20, HOUR] };
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    // multiplayer: the WebSocket goes straight to the game's room, untouched (a 101 response can't take CORS headers)
+    const mp = url.pathname.match(/^\/mp\/([a-z0-9-]+)$/);
+    if (mp) return joinRoom(req, env, mp[1]);
     const cors = corsHeaders(req, url);
     if (req.method === 'OPTIONS') return new Response(null, { status: cors ? 204 : 403, headers: cors || {} });
     let res;
@@ -31,6 +35,18 @@ export default {
   // daily: drop expired links, codes and sessions
   async scheduled(evt, env) { await cleanup(env.DB); },
 };
+
+// the Durable Object class behind env.ROOMS (src/room.js); Durable Object classes are the one other export allowed
+export { GameRoom };
+
+// One room per game, for every player of it: idFromName always finds the same object. Only the game's own pages may join.
+function joinRoom(req, env, game) {
+  if (!GAMES[game]) return json({ error: 'not_found', message: 'No such game.' }, 404);
+  if (!originAllowed(game, req.headers.get('origin'))) return json({ error: 'bad_origin', message: 'Join from the game.' }, 403);
+  if (req.headers.get('upgrade') !== 'websocket') return json({ error: 'upgrade', message: 'Expected a WebSocket.' }, 426);
+  if (!env.ROOMS) return json({ error: 'unavailable', message: 'Multiplayer is not set up here.' }, 503);
+  return env.ROOMS.get(env.ROOMS.idFromName(game)).fetch(req);
+}
 
 // The game-facing endpoints answer the games' own pages; everything else is same-origin only.
 const GAME_API = /^\/api\/(token|me|logout|games\/[a-z0-9-]+\/progress)$/;
