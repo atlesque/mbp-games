@@ -47,7 +47,7 @@ async function signIn(email = 'player@example.com') {
   return { ...(await tok.json()), cookie: cookieOf(done), code: back.searchParams.get('mbpg_code'), verifier, request, poll };
 }
 
-describe('MBP Games sign-in', () => {
+describe('Atlesque Accounts sign-in', () => {
   it('signs a new player in by email link and hands the game a token', async () => {
     const s = await signIn();
     expect(s.user.email).toBe('player@example.com');

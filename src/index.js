@@ -3,7 +3,7 @@ import { sendSignInEmail, signInEmail } from './email.js';
 import { GameRoom } from './room.js';
 import { DAY, HOUR, HttpError, MIN, cookie, esc, getCookie, hash, json, normalizeEmail, now, pkceChallenge, randomToken, readJson } from './util.js';
 
-// ================= MBP GAMES ACCOUNTS =================
+// ================= ATLESQUE ACCOUNTS =================
 // One account per email, shared by every MBP game. Sign-in is passwordless: the player asks for a link on
 // the hosted page (/signin), the emailed link confirms the address, and the tab that asked carries on.
 // Games never see the email flow: they send the player to /signin with a PKCE challenge and swap the
@@ -139,7 +139,7 @@ function readTarget(q) {
     return { client: null, next };
   }
   if (!GAMES[client]) throw new HttpError(400, 'bad_client', 'That game is not one of ours.');
-  if (!redirectAllowed(client, q.redirect_uri)) throw new HttpError(400, 'bad_redirect', 'That page is not allowed to sign in with MBP Games.');
+  if (!redirectAllowed(client, q.redirect_uri)) throw new HttpError(400, 'bad_redirect', 'That page is not allowed to sign in with Atlesque Accounts.');
   if (typeof q.code_challenge !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(q.code_challenge)) throw new HttpError(400, 'bad_challenge', 'The game sent an invalid sign-in request.');
   return { client, redirect_uri: q.redirect_uri, state: typeof q.state === 'string' ? q.state.slice(0, 200) : '', code_challenge: q.code_challenge };
 }
@@ -243,7 +243,7 @@ async function linkPage(req, env, url) {
   const game = l.client && GAMES[l.client];
   return page('Sign in', `<h1>Sign in${game ? ` to ${esc(game.name)}` : ''}</h1><p>as <b>${esc(l.email)}</b></p>
 <form method="post" action="/auth/link"><input type="hidden" name="t" value="${esc(token)}"><button class="btn" autofocus>Sign in</button></form>
-<p class="small">This also confirms your email address for your MBP Games account.</p>`);
+<p class="small">This also confirms your email address for your Atlesque account.</p>`);
 }
 async function confirmLink(req, env) {
   const form = await req.formData(), token = String(form.get('t') || ''), db = env.DB;
@@ -260,8 +260,8 @@ async function confirmLink(req, env) {
 }
 function page(title, body, status = 200, headers = {}) {
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>${esc(title)} · MBP Games</title><link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css?v=3"><script src="/theme.js?v=3"></script></head>
-<body><header class="nav"><a class="logo" href="/"><span class="mark"></span>MBP Games</a></header><main class="card narrow">${body}</main></body></html>`,
+<title>${esc(title)} · Atlesque Accounts</title><link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css?v=3"><script src="/theme.js?v=3"></script></head>
+<body><header class="nav"><a class="logo" href="/"><span class="mark"></span>Atlesque Accounts</a></header><main class="card narrow">${body}</main></body></html>`,
   { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin', ...headers } });
 }
 
