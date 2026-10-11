@@ -1,4 +1,4 @@
-# MBP Games accounts
+# Atlesque Accounts
 
 One account for every MBP game: players sign in once with their email and their progress in each game is saved to it. A Cloudflare Worker with a D1 database, at **https://accounts.atlesque.dev**.
 
