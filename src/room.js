@@ -8,15 +8,17 @@ import { DurableObject } from 'cloudflare:workers';
 //
 // Messages are small JSON objects with a type `t`. From a player:
 //   hello { name }           first, once: the name shown over their head (cleaned up and cut to NAME_MAX)
-//   s     { ... }            their state (where they are, what they hold or ride): relayed to everyone else as is
-//   shot / boom / kill       relayed to everyone else
-//   hit / vhit { to, ... }   damage for one other player (their body, or the vehicle they drive): sent to them only
+//   anything else { t, ... } relayed to everyone else as is (their state, shots, blasts, the people in their part of
+//                            the city), or with a `to` naming another player, sent to that one player only (a hit).
+//                            The room doesn't need to know a game's message types, so a game can add one without a
+//                            deploy here. Types are short lowercase words; the room's own (welcome, join, leave, full)
+//                            can't be sent.
 // To a player:
 //   welcome { id, max, players: [{ id, name }] }, join { id, name }, leave { id }, and the relayed messages with `id`
-//   (and for hit / vhit, `from`) naming the player who sent them.
+//   (and for one sent to them only, `from`) naming the player who sent them.
 // A full room answers `full` and closes with FULL_CODE. The plain text 'ping' is answered 'pong' without waking the room.
 export const MAX_PLAYERS = 16, NAME_MAX = 16, MSG_MAX = 2048, FULL_CODE = 4001;
-const RELAY = new Set(['s', 'shot', 'boom', 'kill']), DIRECT = new Set(['hit', 'vhit']);
+const TYPE = /^[a-z]{1,8}$/, RESERVED = new Set(['hello', 'welcome', 'join', 'leave', 'full']);
 
 export function cleanName(n) {
   const s = String(n ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
@@ -69,11 +71,10 @@ export class GameRoom extends DurableObject {
       return;
     }
     if (!me.id) return;
-    if (RELAY.has(m.t)) { this.broadcast({ ...m, id: me.id }, ws); return; }
-    if (DIRECT.has(m.t)) {
-      const to = this.players().find(p => p.id === m.to);
-      if (to && to.ws !== ws) try { to.ws.send(JSON.stringify({ ...m, from: me.id })); } catch (e) {}
-    }
+    if (!TYPE.test(m.t) || RESERVED.has(m.t)) return;
+    if (m.to === undefined) { this.broadcast({ ...m, id: me.id }, ws); return; }
+    const to = this.players().find(p => p.id === m.to);
+    if (to && to.ws !== ws) try { to.ws.send(JSON.stringify({ ...m, from: me.id })); } catch (e) {}
   }
 
   async webSocketClose(ws, code) { this.left(ws); try { ws.close(code === 1005 || code === 1006 ? 1000 : code, 'bye'); } catch (e) {} }
