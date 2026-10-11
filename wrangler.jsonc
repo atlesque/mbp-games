@@ -6,9 +6,12 @@
   "routes": [{ "pattern": "accounts.atlesque.dev", "custom_domain": true }],
   "workers_dev": false,
   // pages in public/ (sign-in, account hub, admin); the Worker answers /api/* and /auth/* first
-  "assets": { "directory": "./public", "binding": "ASSETS", "html_handling": "drop-trailing-slash", "run_worker_first": ["/api/*", "/auth/*"] },
+  "assets": { "directory": "./public", "binding": "ASSETS", "html_handling": "drop-trailing-slash", "run_worker_first": ["/api/*", "/auth/*", "/mp/*"] },
   "d1_databases": [{ "binding": "DB", "database_name": "mbp-games", "database_id": "53322094-f149-4ba2-874c-4eedd9419c66", "migrations_dir": "migrations" }],
   "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["noreply@atlesque.dev"] }],
+  // multiplayer: one room per game (src/room.js), at wss://accounts.atlesque.dev/mp/<game>. SQLite-backed, so it runs on the Free plan too.
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
   "vars": { "MAIL_FROM": "noreply@atlesque.dev", "MAIL_FROM_NAME": "MBP Games" },
   // ADMIN_EMAILS (comma-separated) is a secret set in the dashboard, so it isn't in the repo
   "keep_vars": true,
@@ -19,6 +22,8 @@
   "previews": {
     "vars": { "MAIL_FROM": "noreply@atlesque.dev", "MAIL_FROM_NAME": "MBP Games (preview)" },
     "d1_databases": [{ "binding": "DB", "database_name": "mbp-games-preview", "database_id": "a8b30968-5ab2-4c3e-b47b-b17105738936" }],
-    "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["noreply@atlesque.dev"] }]
+    "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["noreply@atlesque.dev"] }],
+    // each Preview gets its own empty room namespace
+    "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }] }
   }
 }

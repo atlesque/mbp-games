@@ -29,6 +29,16 @@ There are no passwords. A link works once and runs out after 15 minutes; an emai
    - `POST /api/logout` ends the token.
    - **401** means the token is gone (signed out everywhere); **403** with `error: "banned"` means the account is banned and `message` says why.
 
+## Multiplayer
+
+One shared room per game, at **`wss://accounts.atlesque.dev/mp/<game>`**: a Durable Object (`src/room.js`) that takes up to 16 players and relays what each sends to the others. It keeps no game state (each game is the authority on its own player), and uses the WebSocket Hibernation API, so it only runs while a message is passing through and costs nothing once the last player leaves. Only a game's own `origins` can join.
+
+- First message: `{ t: 'hello', name }` (cut to 16 characters). The answer is `{ t: 'welcome', id, max, players: [{ id, name }] }`; the others get `{ t: 'join', id, name }`, and `{ t: 'leave', id }` when someone goes.
+- `s`, `shot`, `boom`, `kill` go to everyone else with the sender's `id` added; `hit` and `vhit` with a `to` go to that one player only, with `from`. Anything else, or over 2 KB, is dropped.
+- A 17th player gets `{ t: 'full' }` and close code 4001. The text `ping` is answered `pong` without waking the room.
+
+What it costs while people play (Workers Paid; the Free plan has 100,000 requests a day): incoming messages bill at 20 per request. Scrum City sends 10 states a second while a player moves and 1 while they stand still, so a full room of 16 moving players is about 8 requests a second (about 29,000 an hour, $0.15 per million past the included million a month). Duration is billed only while a message is being handled.
+
 ## Running it
 
 ```sh
@@ -47,3 +57,4 @@ Point a local copy of the game at it with `?debug&accounts=http://localhost:8787
 - **Secret** `ADMIN_EMAILS`: comma-separated emails that can open `/admin`. Set it in the Worker's settings (or `wrangler secret put ADMIN_EMAILS`).
 - **Domain**: `accounts.atlesque.dev`, a custom domain on the Worker (from `routes` in `wrangler.jsonc`).
 - A cron at 03:17 UTC clears out expired links, codes and sign-ins.
+- **Durable Object** `GameRoom` (binding `ROOMS`) for multiplayer, created by the `v1` migration in `wrangler.jsonc` on the first deploy that has it. No dashboard setup.
