@@ -1,10 +1,12 @@
 import { DurableObject } from 'cloudflare:workers';
+import { newEvents, advanceEvents, finishEvent } from './world-events.js';
+import { cashLayout } from './event-random.js';
+import { EVENTS } from './world-event-data.js';
 
 // ================= MULTIPLAYER ROOM =================
-// One shared city per game: a Durable Object that relays what each player sends to everyone else in it. It keeps
-// no game state of its own (each player's game is the authority on its own player), so it only runs while a message
-// is passing through. The sockets use the WebSocket Hibernation API: between messages, and as soon as the last
-// player leaves, the object hibernates and costs nothing. Keep it that way: no alarms, timers or accept().
+// One shared city per game. Player movement remains client-owned. World incidents are server-owned,
+// persisted across hibernation and driven by a single alarm at the next start/end deadline.
+// The alarm is removed and incident state reset when the room empties.
 //
 // Messages are small JSON objects with a type `t`. From a player:
 //   hello { name }           first, once: the name shown over their head (cleaned up and cut to NAME_MAX)
@@ -18,7 +20,7 @@ import { DurableObject } from 'cloudflare:workers';
 //   (and for one sent to them only, `from`) naming the player who sent them.
 // A full room answers `full` and closes with FULL_CODE. The plain text 'ping' is answered 'pong' without waking the room.
 export const MAX_PLAYERS = 16, NAME_MAX = 16, MSG_MAX = 2048, FULL_CODE = 4001;
-const TYPE = /^[a-z]{1,8}$/, RESERVED = new Set(['hello', 'welcome', 'join', 'leave', 'full']);
+const TYPE = /^[a-z]{1,8}$/, RESERVED = new Set(['hello', 'welcome', 'join', 'leave', 'full', 'events', 'evaward']);
 
 export function cleanName(n) {
   const s = String(n ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
@@ -68,19 +70,65 @@ export class GameRoom extends DurableObject {
       ws.serializeAttachment({ id, name });
       ws.send(JSON.stringify({ t: 'welcome', id, max: MAX_PLAYERS, players: others.map(p => ({ id: p.id, name: p.name })) }));
       this.broadcast({ t: 'join', id, name }, ws);
+      await this.events();
       return;
     }
     if (!me.id) return;
     if (!TYPE.test(m.t) || RESERVED.has(m.t)) return;
+    if (m.t === 's') {
+      const pos = { w: m.w === 1, al: m.al === 1, x: m.x, y: m.y, z: m.z, v: !!m.v };
+      ws.serializeAttachment({ ...me, pos });
+    }
+    if (['evhit', 'evgrab', 'evcash'].includes(m.t)) { await this.eventAction(ws, me, m); return; }
     if (m.to === undefined) { this.broadcast({ ...m, id: me.id }, ws); return; }
     const to = this.players().find(p => p.id === m.to);
     if (to && to.ws !== ws) try { to.ws.send(JSON.stringify({ ...m, from: me.id })); } catch (e) {}
   }
 
-  async webSocketClose(ws, code) { this.left(ws); try { ws.close(code === 1005 || code === 1006 ? 1000 : code, 'bye'); } catch (e) {} }
-  async webSocketError(ws) { this.left(ws); }
-  left(ws) {
+  async webSocketClose(ws, code) { await this.left(ws); try { ws.close(code === 1005 || code === 1006 ? 1000 : code, 'bye'); } catch (e) {} }
+  async webSocketError(ws) { await this.left(ws); }
+  async events() {
+    const now = Date.now(), state = await this.ctx.storage.get('events') || newEvents(now);
+    advanceEvents(state, now, this.players());
+    await this.saveEvents(state, now);
+    const packet = { t: 'events', now, active: state.active };
+    this.broadcast(packet);
+  }
+  async saveEvents(state, now) {
+    await this.ctx.storage.put('events', state);
+    const deadlines = [...Object.entries(state.next).filter(([id]) => !state.active.some(e => e.id === id)).map(([, at]) => at), ...state.active.map(e => e.end)];
+    await this.ctx.storage.setAlarm(Math.max(now + 100, Math.min(...deadlines)));
+  }
+  async alarm() {
+    if (!this.players().length) { await this.ctx.storage.delete('events'); return; }
+    await this.events();
+  }
+  async eventAction(ws, me, m) {
+    const state = await this.ctx.storage.get('events'), now = Date.now();
+    const e = state?.active.find(e => e.key === m.key);
+    if (!e || now >= e.end) return;
+    if (m.t === 'evhit' && me.pos?.w && me.pos.al && Number.isFinite(e.hp) && Number.isFinite(m.d) && m.d > 0) {
+      e.hp -= Math.min(m.d, 1000);
+      if (e.hp <= 0) finishEvent(state, e, now);
+    } else if (m.t === 'evgrab' && e.id === 'ufo' && e.target === me.id && !e.capture) {
+      const pos = me.pos, t = (now - e.start) / 1000 - EVENTS.ufo.warning;
+      if (!pos?.w || !pos.al || !Number.isFinite(pos.x) || !Number.isFinite(pos.z) || pos.y >= 4 || !Number.isFinite(pos.y) || t < 0 || t >= 9 || Math.hypot(pos.x - e.x, pos.z - e.z) > 4.5) return;
+      e.capture = { at: t, x: pos.x, z: pos.z, y: pos.y };
+    } else if (m.t === 'evcash' && e.id === 'cashrain' && Number.isInteger(m.i) && m.i >= 0 && m.i < 12 && !e.collected.includes(m.i)) {
+      const pos = me.pos, bundle = cashLayout(e.x, e.z, e.seed)[m.i];
+      if (now < e.start + (EVENTS.cashrain.warning + (bundle.height - 1.5) / 5) * 1000 || !pos?.w || !pos.al || pos.y >= 2 || !Number.isFinite(pos.y) || !Number.isFinite(pos.x) || !Number.isFinite(pos.z) || Math.hypot(pos.x - bundle.x, pos.z - bundle.z) >= 1.2) return;
+      e.collected.push(m.i);
+      // Persist the claim before granting it; duplicate/retried requests cannot pay twice.
+      await this.saveEvents(state, now);
+      ws.send(JSON.stringify({ t: 'evaward', key: e.key, i: m.i, value: 25 }));
+      this.broadcast({ t: 'events', now, active: state.active }); return;
+    } else return;
+    await this.saveEvents(state, now);
+    this.broadcast({ t: 'events', now, active: state.active });
+  }
+  async left(ws) {
     const a = ws.deserializeAttachment();
     if (a && a.id && !a.gone) { ws.serializeAttachment({ ...a, gone: true }); this.broadcast({ t: 'leave', id: a.id }, ws); }
+    if (!this.players().length) { await this.ctx.storage.deleteAlarm(); await this.ctx.storage.delete('events'); }
   }
 }
