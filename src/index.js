@@ -32,7 +32,7 @@ export default {
     if (cors) for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
     return res;
   },
-  // daily: drop expired links, codes and sessions
+  // daily: drop expired links, codes and sessions, and sign-in email records older than 90 days
   async scheduled(evt, env) { await cleanup(env.DB); },
 };
 
@@ -176,13 +176,17 @@ async function startSignIn(req, env, url, ctx) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, await hash(token), await hash(poll), email, target.client, target.client ? target.redirect_uri : target.next,
     target.state || null, target.code_challenge || null, ip, t, t + LINK_TTL).run();
   const link = `${url.origin}/auth/link?t=${token}`;
+  const logEmail = (status, error) => db.prepare('INSERT INTO sign_in_emails (email, at, status, error, client) VALUES (?, ?, ?, ?, ?)').bind(email, t, status, error, target.client).run();
+  let status;
   try {
-    await sendSignInEmail(env, email, signInEmail({ link, gameName: target.client && GAMES[target.client].name, minutes: LINK_TTL / MIN }));
+    status = await sendSignInEmail(env, email, signInEmail({ link, gameName: target.client && GAMES[target.client].name, minutes: LINK_TTL / MIN }));
   } catch (e) {
     console.error('sign-in email failed', e && e.code, e && e.message);
     await db.prepare('DELETE FROM magic_links WHERE id = ?').bind(id).run();
+    await logEmail('failed', String([e && e.code, e && e.message].filter(Boolean).join(': ') || 'unknown').slice(0, 300));
     throw new HttpError(502, 'email_failed', 'We could not send the email. Check the address and try again.');
   }
+  await logEmail(status, null);
   return json({ request: id, poll, expiresAt: t + LINK_TTL });
 }
 const linkTarget = l => l.client ? { client: l.client, redirect_uri: l.redirect_uri, state: l.state, code_challenge: l.code_challenge } : { client: null, next: l.redirect_uri };
@@ -322,6 +326,21 @@ async function admin(req, env, url) {
     const prog = users.length ? (await db.prepare(`SELECT user_id, game, data, rev, updated_at FROM progress WHERE user_id IN (${users.map(() => '?').join(',')})`).bind(...users.map(u => u.id)).all()).results : [];
     return json({ total, more, players: users.map(u => ({ ...adminUser(u), games: prog.filter(r => r.user_id === u.id).map(gameRow) })) });
   }
+  // pending registrations: asked for a sign-in link, never opened one, so no account yet
+  if (p === '/api/admin/pending' && m === 'GET') {
+    const q = (url.searchParams.get('q') || '').trim().toLowerCase(), off = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
+    const where = `WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.email = e.email)${q ? ' AND e.email LIKE ?' : ''}`, args = q ? [`%${q.replace(/[%_]/g, '')}%`] : [];
+    const rows = (await db.prepare(`SELECT e.email, MIN(e.at) AS first_at, MAX(e.at) AS last_at, COUNT(*) AS emails, SUM(e.status = 'sent') AS sent, SUM(e.status = 'failed') AS failed
+      FROM sign_in_emails e ${where} GROUP BY e.email ORDER BY last_at DESC LIMIT 51 OFFSET ?`).bind(...args, off).all()).results;
+    const total = await db.prepare(`SELECT COUNT(DISTINCT e.email) AS n FROM sign_in_emails e ${where}`).bind(...args).first('n');
+    const more = rows.length > 50; rows.length = Math.min(rows.length, 50);
+    const last = rows.length ? (await db.prepare(`SELECT email, at, status, error, client FROM sign_in_emails WHERE email IN (${rows.map(() => '?').join(',')}) ORDER BY at DESC, id DESC`).bind(...rows.map(r => r.email)).all()).results : [];
+    return json({ total, more, pending: rows.map(r => {
+      const l = last.find(x => x.email === r.email);
+      return { email: r.email, firstAt: r.first_at, lastAt: r.last_at, emails: r.emails, sent: r.sent, failed: r.failed,
+        last: { at: l.at, status: l.status, error: l.error, game: l.client && GAMES[l.client] ? GAMES[l.client].name : l.client, linkOpen: l.status !== 'failed' && l.at + LINK_TTL > now() } };
+    }) });
+  }
   const pm = p.match(/^\/api\/admin\/players\/([0-9a-f-]{36})(?:\/(reset|ban|unban|signout))?$/);
   if (!pm) throw new HttpError(404, 'not_found', 'No such endpoint.');
   const u = await db.prepare('SELECT * FROM users WHERE id = ?').bind(pm[1]).first();
@@ -331,7 +350,8 @@ async function admin(req, env, url) {
     const prog = (await db.prepare('SELECT game, data, rev, updated_at FROM progress WHERE user_id = ? ORDER BY updated_at DESC').bind(u.id).all()).results;
     const sessions = await db.prepare('SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ?').bind(u.id, now()).first('n');
     const history = (await db.prepare('SELECT at, admin, action, game, detail FROM admin_log WHERE user_id = ? ORDER BY at DESC, id DESC LIMIT 30').bind(u.id).all()).results;
-    return json({ player: { ...adminUser(u), sessions, games: prog.map(r => ({ ...gameRow(r), data: r.data ? JSON.parse(r.data) : null })), history } });
+    const emails = (await db.prepare('SELECT at, status, error FROM sign_in_emails WHERE email = ? ORDER BY at DESC, id DESC LIMIT 10').bind(u.email).all()).results;
+    return json({ player: { ...adminUser(u), sessions, games: prog.map(r => ({ ...gameRow(r), data: r.data ? JSON.parse(r.data) : null })), history, emails } });
   }
   if (m !== 'POST') throw new HttpError(405, 'method', 'Use POST.');
   sameOrigin(req, url);
@@ -363,5 +383,6 @@ async function cleanup(db) {
     db.prepare('DELETE FROM magic_links WHERE expires_at < ?').bind(t - DAY),
     db.prepare('DELETE FROM auth_codes WHERE expires_at < ?').bind(t),
     db.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(t),
+    db.prepare('DELETE FROM sign_in_emails WHERE at < ?').bind(t - 90 * DAY),
   ]);
 }

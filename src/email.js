@@ -26,7 +26,9 @@ export function signInEmail({ link, gameName, minutes }) {
   return { subject: gameName ? `Sign in to ${gameName}` : 'Sign in to MBP Games', text, html };
 }
 
+// answers 'sent', or 'logged' when there is no mail service; throws when the mail service refuses
 export async function sendSignInEmail(env, to, msg) {
-  if (!env.EMAIL) { console.log(`[mbp-games] no EMAIL binding; sign-in mail for ${to}:\n${msg.text}`); return; }
+  if (!env.EMAIL) { console.log(`[mbp-games] no EMAIL binding; sign-in mail for ${to}:\n${msg.text}`); return 'logged'; }
   await env.EMAIL.send({ to, from: { email: env.MAIL_FROM, name: env.MAIL_FROM_NAME || 'MBP Games' }, subject: msg.subject, text: msg.text, html: msg.html });
+  return 'sent';
 }
