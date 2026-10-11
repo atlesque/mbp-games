@@ -51,16 +51,23 @@ describe('multiplayer room', () => {
     await room.webSocketMessage(a, JSON.stringify({ t: 'hit', to: idb, d: 20, z: 'head' }));
     expect(b.last('hit')).toEqual({ t: 'hit', to: idb, d: 20, z: 'head', from: ida });
     expect(c.last('hit')).toBeUndefined();
+    // a type the room has never heard of goes through the same way
+    await room.webSocketMessage(b, JSON.stringify({ t: 'npcs', n: [[1, 'cop']] }));
+    expect(a.last('npcs')).toEqual({ t: 'npcs', n: [[1, 'cop']], id: idb });
+    await room.webSocketMessage(b, JSON.stringify({ t: 'nhit', to: ida, i: 1 }));
+    expect(a.last('nhit')).toEqual({ t: 'nhit', to: ida, i: 1, from: idb });
+    expect(c.last('nhit')).toBeUndefined();
   });
 
-  it('ignores players who have not said hello, unknown types and oversized messages', async () => {
+  it('ignores players who have not said hello, the room\'s own types, odd types and oversized messages', async () => {
     const room = fakeRoom();
     const a = await room.connect('A'), lurker = await room.connect();
+    const b = await room.connect('B'); a.sent.length = 0;
     await room.webSocketMessage(lurker, JSON.stringify({ t: 's', x: 9 }));
-    await room.webSocketMessage(a, JSON.stringify({ t: 'nope' }));
+    for (const t of ['join', 'leave', 'welcome', 'full', 'hello', 'Nope', 'waytoolongtype', '']) await room.webSocketMessage(b, JSON.stringify({ t, id: 'x' }));
     await room.webSocketMessage(a, JSON.stringify({ t: 's', pad: 'x'.repeat(3000) }));
     await room.webSocketMessage(a, 'not json');
-    expect(a.sent.map(m => m.t)).toEqual(['welcome']);
+    expect(a.sent).toEqual([]);
     expect(lurker.sent).toEqual([]);
   });
 
