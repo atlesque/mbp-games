@@ -1,4 +1,4 @@
-/* Atlesque Accounts: follows the device (auto) unless the player picks light or dark (theme.js) */
+/* Atlesque Play: follows the device (auto) unless the player picks light or dark (theme.js) */
 @font-face{font-family:'Inter';src:url(/fonts/inter.woff2) format('woff2');font-weight:100 900;font-display:swap}
 :root{
   --bg:#0a0a0f; --surface:#14141c; --surface-2:#1c1c27; --line:rgba(255,255,255,.07); --hair:rgba(255,255,255,.25);

@@ -3,8 +3,8 @@ import { sendSignInEmail, signInEmail } from './email.js';
 import { GameRoom } from './room.js';
 import { DAY, HOUR, HttpError, MIN, cookie, esc, getCookie, hash, json, normalizeEmail, now, pkceChallenge, randomToken, readJson } from './util.js';
 
-// ================= ATLESQUE ACCOUNTS =================
-// One account per email, shared by every MBP game. Sign-in is passwordless: the player asks for a link on
+// ================= ATLESQUE PLAY =================
+// One account per email, shared by every Atlesque game. Sign-in is passwordless: the player asks for a link on
 // the hosted page (/signin), the emailed link confirms the address, and the tab that asked carries on.
 // Games never see the email flow: they send the player to /signin with a PKCE challenge and swap the
 // code they get back for a bearer token (/api/token). The admin page (/admin) is for ADMIN_EMAILS.
@@ -14,9 +14,17 @@ const WEB_COOKIE = 'mbpg_session';
 const MAX_SAVE = 64 * 1024;
 const LIMITS = { perEmail: [5, 15 * MIN], perIp: [20, HOUR] };
 
+// The site's old name. Its pages and sign-in links move to play.atlesque.dev; the game API and multiplayer
+// still answer here, so a game that hasn't switched over keeps working.
+const OLD_HOST = 'accounts.atlesque.dev', HOST = 'play.atlesque.dev';
+
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    if (url.hostname === OLD_HOST && (req.method === 'GET' || req.method === 'HEAD') && !/^\/(api|mp)\//.test(url.pathname)) {
+      url.hostname = HOST;
+      return Response.redirect(url.toString(), 301);
+    }
     // multiplayer: the WebSocket goes straight to the game's room, untouched (a 101 response can't take CORS headers)
     const mp = url.pathname.match(/^\/mp\/([a-z0-9-]+)$/);
     if (mp) return joinRoom(req, env, mp[1]);
@@ -139,7 +147,7 @@ function readTarget(q) {
     return { client: null, next };
   }
   if (!GAMES[client]) throw new HttpError(400, 'bad_client', 'That game is not one of ours.');
-  if (!redirectAllowed(client, q.redirect_uri)) throw new HttpError(400, 'bad_redirect', 'That page is not allowed to sign in with Atlesque Accounts.');
+  if (!redirectAllowed(client, q.redirect_uri)) throw new HttpError(400, 'bad_redirect', 'That page is not allowed to sign in with Atlesque Play.');
   if (typeof q.code_challenge !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(q.code_challenge)) throw new HttpError(400, 'bad_challenge', 'The game sent an invalid sign-in request.');
   return { client, redirect_uri: q.redirect_uri, state: typeof q.state === 'string' ? q.state.slice(0, 200) : '', code_challenge: q.code_challenge };
 }
@@ -260,8 +268,8 @@ async function confirmLink(req, env) {
 }
 function page(title, body, status = 200, headers = {}) {
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>${esc(title)} · Atlesque Accounts</title><link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css?v=3"><script src="/theme.js?v=3"></script></head>
-<body><header class="nav"><a class="logo" href="/"><span class="mark"></span>Atlesque Accounts</a></header><main class="card narrow">${body}</main></body></html>`,
+<title>${esc(title)} · Atlesque Play</title><link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css?v=3"><script src="/theme.js?v=3"></script></head>
+<body><header class="nav"><a class="logo" href="/"><span class="mark"></span>Atlesque Play</a></header><main class="card narrow">${body}</main></body></html>`,
   { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin', ...headers } });
 }
 

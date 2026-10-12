@@ -2,7 +2,7 @@
   "name": "mbp-games",
   "version": "1.0.0",
   "private": true,
-  "description": "Atlesque Accounts: one sign-in and saved progress for every MBP game (Cloudflare Worker + D1).",
+  "description": "Atlesque Play: one sign-in and saved progress for every Atlesque game (Cloudflare Worker + D1).",
   "scripts": {
     "dev": "wrangler d1 migrations apply mbp-games --local && wrangler dev",
     "deploy": "wrangler d1 migrations apply mbp-games --remote && wrangler deploy",

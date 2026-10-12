@@ -1,7 +1,7 @@
 {
-  "name": "Atlesque Accounts",
-  "short_name": "Atlesque Accounts",
-  "description": "One account for every MBP game: sign in once, keep your progress.",
+  "name": "Atlesque Play",
+  "short_name": "Atlesque Play",
+  "description": "One account for every Atlesque game: sign in once, keep your progress.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
