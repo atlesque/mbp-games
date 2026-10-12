@@ -16,7 +16,8 @@ function fakeSocket() {
 }
 function fakeRoom() {
   const sockets = [];
-  const ctx = { acceptWebSocket: ws => sockets.push(ws), getWebSockets: () => sockets.filter(ws => ws.closed == null), setWebSocketAutoResponse() {} };
+  const saved = new Map();
+  const ctx = { storage: { get: async k => saved.get(k), put: async (k,v) => saved.set(k,v), delete: async k => saved.delete(k), setAlarm: async () => {}, deleteAlarm: async () => {} }, acceptWebSocket: ws => sockets.push(ws), getWebSockets: () => sockets.filter(ws => ws.closed == null), setWebSocketAutoResponse() {} };
   const room = new GameRoom(ctx, {});
   // what fetch() does with a new socket, without a real WebSocketPair
   room.connect = async (name) => {
