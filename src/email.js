@@ -5,7 +5,7 @@ import { esc } from './util.js';
 // the link is logged instead, so sign-in still works on a laptop.
 
 // Says who sent it and why, in both parts: a bare "Sign in" button from an unknown sender reads like phishing to Gmail.
-const FOOTER = 'You got this email because someone asked to sign in with this address at accounts.atlesque.dev, the account page for Atlesque Accounts.';
+const FOOTER = 'You got this email because someone asked to sign in with this address at play.atlesque.dev, the sign-in page for Atlesque Play.';
 
 export function signInEmail({ link, gameName, minutes }) {
   const what = gameName ? `to keep playing ${gameName}` : 'to your Atlesque account';
@@ -15,7 +15,7 @@ export function signInEmail({ link, gameName, minutes }) {
   const html = `<!doctype html><html><body style="margin:0;background:#0a0a0f;font-family:Inter,Arial,Helvetica,sans-serif;color:#f4f4f7">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:32px 12px"><tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#14141c;border:1px solid #26262f;border-radius:24px;padding:32px">
-<tr><td style="font-size:13px;font-weight:bold;letter-spacing:.08em;text-transform:uppercase;color:#8b8b9e">Atlesque Accounts</td></tr>
+<tr><td style="font-size:13px;font-weight:bold;letter-spacing:.08em;text-transform:uppercase;color:#8b8b9e">Atlesque Play</td></tr>
 <tr><td style="padding:14px 0 6px;font-size:26px;font-weight:bold;letter-spacing:-.02em">Sign in ${esc(what)}</td></tr>
 <tr><td style="padding:6px 0 22px;font-size:15px;line-height:1.5;color:#b4b4c4">Press the button to sign in. It also confirms this email address for your Atlesque account.</td></tr>
 <tr><td><a href="${esc(link)}" style="display:inline-block;background:#c8ff3d;color:#0a0a0f;font-weight:bold;text-decoration:none;padding:14px 30px;border-radius:99px;font-size:16px">Sign in</a></td></tr>
@@ -23,12 +23,12 @@ export function signInEmail({ link, gameName, minutes }) {
 <tr><td style="padding:16px 0 0;font-size:13px;line-height:1.5;color:#8b8b9e">Button not working? Copy this link into your browser:<br><a href="${esc(link)}" style="color:#b4b4c4;word-break:break-all">${esc(link)}</a></td></tr>
 </table>
 <p style="max-width:480px;margin:16px auto 0;font-size:12px;line-height:1.5;color:#8b8b9e">${esc(FOOTER)}</p></td></tr></table></body></html>`;
-  return { subject: gameName ? `Sign in to ${gameName}` : 'Sign in to Atlesque Accounts', text, html };
+  return { subject: gameName ? `Sign in to ${gameName}` : 'Sign in to Atlesque Play', text, html };
 }
 
 // answers 'sent', or 'logged' when there is no mail service; throws when the mail service refuses
 export async function sendSignInEmail(env, to, msg) {
   if (!env.EMAIL) { console.log(`[mbp-games] no EMAIL binding; sign-in mail for ${to}:\n${msg.text}`); return 'logged'; }
-  await env.EMAIL.send({ to, from: { email: env.MAIL_FROM, name: env.MAIL_FROM_NAME || 'Atlesque Accounts' }, subject: msg.subject, text: msg.text, html: msg.html });
+  await env.EMAIL.send({ to, from: { email: env.MAIL_FROM, name: env.MAIL_FROM_NAME || 'Atlesque Play' }, subject: msg.subject, text: msg.text, html: msg.html });
   return 'sent';
 }

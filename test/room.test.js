@@ -92,7 +92,7 @@ describe('multiplayer room', () => {
 
   it('only lets the game\'s own pages in', async () => {
     const env = { ROOMS: { idFromName: n => n, get: () => ({ fetch: async () => new Response('room') }) } };
-    const ask = (path, origin) => worker.fetch(new Request('https://accounts.atlesque.dev' + path, { headers: { upgrade: 'websocket', ...(origin ? { origin } : {}) } }), env, {});
+    const ask = (path, origin) => worker.fetch(new Request('https://play.atlesque.dev' + path, { headers: { upgrade: 'websocket', ...(origin ? { origin } : {}) } }), env, {});
     expect((await ask('/mp/scrum-city', 'https://evil.example')).status).toBe(403);
     expect((await ask('/mp/nope', 'https://mbp-scrum-city.atlesque.dev')).status).toBe(404);
     expect(await (await ask('/mp/scrum-city', 'https://mbp-scrum-city.atlesque.dev')).text()).toBe('room');

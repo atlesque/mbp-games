@@ -1,6 +1,6 @@
-# Atlesque Accounts
+# Atlesque Play
 
-One account for every MBP game: players sign in once with their email and their progress in each game is saved to it. A Cloudflare Worker with a D1 database, at **https://accounts.atlesque.dev**.
+One account for every Atlesque game: players sign in once with their email and their progress in each game is saved to it. A Cloudflare Worker with a D1 database, at **https://play.atlesque.dev**.
 
 The first game on it is [MBP - Scrum City](https://github.com/atlesque/mbp-scrum-city).
 
@@ -20,7 +20,7 @@ There are no passwords. A link works once and runs out after 15 minutes; an emai
 ### The flow, for a game
 
 1. Make a random `code_verifier` and its `code_challenge` = base64url(SHA-256(verifier)), plus a random `state`; keep them in `localStorage`.
-2. Send the player to `https://accounts.atlesque.dev/signin?client=<game id>&redirect_uri=<this page>&state=<state>&code_challenge=<challenge>`.
+2. Send the player to `https://play.atlesque.dev/signin?client=<game id>&redirect_uri=<this page>&state=<state>&code_challenge=<challenge>`.
 3. They come back to `redirect_uri` with `?mbpg_code=…&mbpg_state=…`. Check the state, then `POST /api/token` with `{ code, code_verifier, client, redirect_uri }` to get `{ token, user: { id, email }, expiresAt }`. Tokens last 90 days.
 4. Send the token as `Authorization: Bearer <token>`:
    - `GET /api/me` → `{ user }`
@@ -31,7 +31,7 @@ There are no passwords. A link works once and runs out after 15 minutes; an emai
 
 ## Multiplayer
 
-One shared room per game, at **`wss://accounts.atlesque.dev/mp/<game>`**: a Durable Object (`src/room.js`) that takes up to 16 players and relays what each sends to the others. It keeps no game state (each game is the authority on its own player), and uses the WebSocket Hibernation API, so it only runs while a message is passing through and costs nothing once the last player leaves. Only a game's own `origins` can join.
+One shared room per game, at **`wss://play.atlesque.dev/mp/<game>`**: a Durable Object (`src/room.js`) that takes up to 16 players and relays what each sends to the others. It keeps no game state (each game is the authority on its own player), and uses the WebSocket Hibernation API, so it only runs while a message is passing through and costs nothing once the last player leaves. Only a game's own `origins` can join.
 
 - First message: `{ t: 'hello', name }` (cut to 16 characters). The answer is `{ t: 'welcome', id, max, players: [{ id, name }] }`; the others get `{ t: 'join', id, name }`, and `{ t: 'leave', id }` when someone goes.
 - Any other message (a type of 1-8 lowercase letters) goes to everyone else with the sender's `id` added, or, with a `to`, to that one player only, with `from`. The room doesn't know the game's types (Scrum City's are in its `public/js/net/protocol.js`), so a game can add one without a deploy here. The room's own types, anything else, or over 2 KB, is dropped.
@@ -55,6 +55,6 @@ Point a local copy of the game at it with `?debug&accounts=http://localhost:8787
 - **D1 database** `mbp-games` (id in `wrangler.jsonc`). Schema changes are new files in `migrations/`.
 - **Email**: Cloudflare Email Service, with `atlesque.dev` onboarded for sending (Compute → Email Service → Email Sending). Mail comes from `noreply@atlesque.dev`; the binding is restricted to that sender.
 - **Secret** `ADMIN_EMAILS`: comma-separated emails that can open `/admin`. Set it in the Worker's settings (or `wrangler secret put ADMIN_EMAILS`).
-- **Domain**: `accounts.atlesque.dev`, a custom domain on the Worker (from `routes` in `wrangler.jsonc`).
+- **Domain**: `play.atlesque.dev`, a custom domain on the Worker (from `routes` in `wrangler.jsonc`). The old name, `accounts.atlesque.dev`, stays on the Worker too: its pages and sign-in links redirect to `play.atlesque.dev`, while `/api/*` and `/mp/*` still answer there so games that haven't switched keep working. Players signed in on the old site sign in once more on the new one.
 - A cron at 03:17 UTC clears out expired links, codes and sign-ins.
 - **Durable Object** `GameRoom` (binding `ROOMS`) for multiplayer, created by the `v1` migration in `wrangler.jsonc` on the first deploy that has it. No dashboard setup.

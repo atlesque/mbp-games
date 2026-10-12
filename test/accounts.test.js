@@ -4,7 +4,7 @@ import { redirectAllowed } from '../src/clients.js';
 import { pkceChallenge } from '../src/util.js';
 import { makeD1 } from './d1.js';
 
-const APP = 'https://accounts.atlesque.dev', GAME = 'https://mbp-scrum-city.atlesque.dev', BACK = `${GAME}/`;
+const APP = 'https://play.atlesque.dev', GAME = 'https://mbp-scrum-city.atlesque.dev', BACK = `${GAME}/`;
 let env, mails;
 beforeEach(() => {
   mails = [];
@@ -47,7 +47,7 @@ async function signIn(email = 'player@example.com') {
   return { ...(await tok.json()), cookie: cookieOf(done), code: back.searchParams.get('mbpg_code'), verifier, request, poll };
 }
 
-describe('Atlesque Accounts sign-in', () => {
+describe('Atlesque Play sign-in', () => {
   it('signs a new player in by email link and hands the game a token', async () => {
     const s = await signIn();
     expect(s.user.email).toBe('player@example.com');
@@ -92,6 +92,23 @@ describe('Atlesque Accounts sign-in', () => {
   it('limits how many emails one address can ask for', async () => {
     for (let i = 0; i < 5; i++) expect((await call('/api/signin/start', { method: 'POST', origin: APP, body: { email: 'spam@b.co' } })).status).toBe(200);
     expect((await call('/api/signin/start', { method: 'POST', origin: APP, body: { email: 'spam@b.co' } })).status).toBe(429);
+  });
+});
+
+describe('old domain', () => {
+  const OLD = 'https://accounts.atlesque.dev';
+  it('sends pages and sign-in links on to play.atlesque.dev', async () => {
+    for (const path of ['/', '/signin?client=scrum-city&state=s1', '/admin', '/auth/link?t=abc']) {
+      const res = await worker.fetch(new Request(OLD + path), env, {});
+      expect(res.status).toBe(301);
+      expect(res.headers.get('location')).toBe(APP + path);
+    }
+  });
+  it('still answers the game API for games that use the old address', async () => {
+    const { token } = await signIn();
+    const res = await worker.fetch(new Request(OLD + '/api/me', { headers: { origin: GAME, authorization: `Bearer ${token}` } }), env, {});
+    expect(res.status).toBe(200);
+    expect((await res.json()).user.email).toBe('player@example.com');
   });
 });
 

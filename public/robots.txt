@@ -3,4 +3,4 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /auth/
 
-Sitemap: https://accounts.atlesque.dev/sitemap.xml
+Sitemap: https://play.atlesque.dev/sitemap.xml
