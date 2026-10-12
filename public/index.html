@@ -11,14 +11,14 @@
 <meta property="og:url" content="https://play.atlesque.dev/">
 <meta property="og:title" content="Atlesque Play · One sign-in, every game">
 <meta property="og:description" content="One account for every Atlesque game. Sign in once with your email and your progress follows you to every game, on any device. No password needed.">
-<meta property="og:image" content="https://play.atlesque.dev/og.png?v=3">
+<meta property="og:image" content="https://play.atlesque.dev/og.png?v=4">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Atlesque Play: Play anywhere. Keep everything.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Atlesque Play · One sign-in, every game">
 <meta name="twitter:description" content="One account for every Atlesque game. Sign in once with your email and your progress follows you to every game, on any device. No password needed.">
-<meta name="twitter:image" content="https://play.atlesque.dev/og.png?v=3">
+<meta name="twitter:image" content="https://play.atlesque.dev/og.png?v=4">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -48,7 +48,7 @@ const short = n => n.replace(/^MBP\s*-\s*/, '');
 const initials = n => short(n).split(/\s+/).map(w => w[0]).join('').slice(0, 2);
 fetch('/api/account').then(r => r.json()).then(a => {
   if (!a.user) {
-    view.innerHTML = `<div class="card" style="max-width:460px;margin:8vh auto 0"><p class="eyebrow"><span class="dot"></span>One account · every game</p>
+    view.innerHTML = `<div class="card" style="max-width:460px;margin:8vh auto 0">
 <h1>Your Atlesque account</h1><p class="muted">Sign in once with your email and your progress follows you to every Atlesque game. No password needed.</p><a class="btn" href="/signin">Sign in</a></div>`;
     return;
   }
