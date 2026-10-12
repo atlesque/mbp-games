@@ -1,11 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
-import { newEvents, advanceEvents, finishEvent } from './world-events.js';
+import { newEvents, advanceEvents, finishEvent, nextDeadline } from './world-events.js';
 import { cashLayout } from './event-random.js';
 import { EVENTS } from './world-event-data.js';
 
 // ================= MULTIPLAYER ROOM =================
-// One shared city per game. Player movement remains client-owned. World incidents are server-owned,
-// persisted across hibernation and driven by a single alarm at the next start/end deadline.
+// One shared city per game. Player movement remains client-owned. World incidents are server-owned, take turns
+// (src/world-events.js), persist across hibernation and are driven by a single alarm at the next deadline.
 // The alarm is removed and incident state reset when the room empties.
 //
 // Messages are small JSON objects with a type `t`. From a player:
@@ -88,7 +88,7 @@ export class GameRoom extends DurableObject {
   async webSocketClose(ws, code) { await this.left(ws); try { ws.close(code === 1005 || code === 1006 ? 1000 : code, 'bye'); } catch (e) {} }
   async webSocketError(ws) { await this.left(ws); }
   async events() {
-    const now = Date.now(), state = await this.ctx.storage.get('events') || newEvents(now);
+    const now = Date.now(), saved = await this.ctx.storage.get('events'), state = saved?.left ? saved : newEvents(now);
     advanceEvents(state, now, this.players());
     await this.saveEvents(state, now);
     const packet = { t: 'events', now, active: state.active };
@@ -96,8 +96,7 @@ export class GameRoom extends DurableObject {
   }
   async saveEvents(state, now) {
     await this.ctx.storage.put('events', state);
-    const deadlines = [...Object.entries(state.next).filter(([id]) => !state.active.some(e => e.id === id)).map(([, at]) => at), ...state.active.map(e => e.end)];
-    await this.ctx.storage.setAlarm(Math.max(now + 100, Math.min(...deadlines)));
+    await this.ctx.storage.setAlarm(Math.max(now + 100, nextDeadline(state, now, this.players())));
   }
   async alarm() {
     if (!this.players().length) { await this.ctx.storage.delete('events'); return; }

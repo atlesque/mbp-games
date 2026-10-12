@@ -1,4 +1,4 @@
-// Each event runs its own clock. Severity controls presentation, initial staggering and recovery time.
+// Automatic events take turns; severity controls presentation and each event’s initial delay and cooldown.
 export const INTENSITY = {
   mild: { label: 'MILD', color: '#8bf4ac', cooldown: [35, 70], initial: [25, 75] },
   moderate: { label: 'MODERATE', color: '#ffe18a', cooldown: [70, 120], initial: [60, 130] },
