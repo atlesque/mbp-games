@@ -1,5 +1,5 @@
 // ================= GAMES =================
-// Every game that signs players in with an MBP Games account. A game's id is also its client id.
+// Every game that signs players in with an Atlesque account. A game's id is also its client id.
 // `origins` are the pages allowed to send players here and receive them back (and to call the API);
 // `summary` turns a save into the few numbers the admin page shows.
 export const GAMES = {

@@ -1,4 +1,4 @@
-# MBP Games accounts
+# Atlesque Accounts
 
 One account for every MBP game: players sign in once with their email and their progress in each game is saved to it. A Cloudflare Worker with a D1 database, at **https://accounts.atlesque.dev**.
 
@@ -8,7 +8,7 @@ The first game on it is [MBP - Scrum City](https://github.com/atlesque/mbp-scrum
 
 - **`/signin`**: the hosted sign-in every game sends players to. They type their email and get a link; opening it (on any device) and pressing **Sign in** confirms the address, creates the account the first time, and signs them in. The tab that asked carries on by itself and goes back to the game. Already signed in on this site? It's one click ("Continue as …"), which is the single sign-on part.
 - **`/`**: the account hub: who you're signed in as and the games you've played.
-- **`/admin`**: for the emails in `ADMIN_EMAILS`: every player with their games and progress, and buttons to reset a game's progress, ban or unban, and sign a player out everywhere. Every admin action is logged on the player's page.
+- **`/admin`**: for the emails in `ADMIN_EMAILS`: every player with their games and progress, and buttons to reset a game's progress, ban or unban, and sign a player out everywhere. Every admin action is logged on the player's page. A second tab lists **pending registrations**: addresses that asked for a sign-in link in the last 90 days but never opened one, with whether each verification email was sent or failed (and why).
 
 There are no passwords. A link works once and runs out after 15 minutes; an email can ask for 5 links per 15 minutes and an IP for 20 per hour.
 

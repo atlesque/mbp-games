@@ -12,7 +12,7 @@
   // multiplayer: one room per game (src/room.js), at wss://accounts.atlesque.dev/mp/<game>. SQLite-backed, so it runs on the Free plan too.
   "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
-  "vars": { "MAIL_FROM": "noreply@atlesque.dev", "MAIL_FROM_NAME": "MBP Games" },
+  "vars": { "MAIL_FROM": "noreply@atlesque.dev", "MAIL_FROM_NAME": "Atlesque Accounts" },
   // ADMIN_EMAILS (comma-separated) is a secret set in the dashboard, so it isn't in the repo
   "keep_vars": true,
   "triggers": { "crons": ["17 3 * * *"] },
@@ -20,7 +20,7 @@
   // Worker Previews (PR branch builds) use their own empty database, never the live accounts.
   // New migrations: npx wrangler d1 migrations apply mbp-games-preview --remote --config wrangler.preview-migrations.jsonc
   "previews": {
-    "vars": { "MAIL_FROM": "noreply@atlesque.dev", "MAIL_FROM_NAME": "MBP Games (preview)" },
+    "vars": { "MAIL_FROM": "noreply@atlesque.dev", "MAIL_FROM_NAME": "Atlesque Accounts (preview)" },
     "d1_databases": [{ "binding": "DB", "database_name": "mbp-games-preview", "database_id": "a8b30968-5ab2-4c3e-b47b-b17105738936" }],
     "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["noreply@atlesque.dev"] }],
     // each Preview gets its own empty room namespace
