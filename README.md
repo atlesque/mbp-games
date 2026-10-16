@@ -49,7 +49,7 @@ npm test         # the Worker end to end on Node's built-in SQLite (test/d1.js s
 npm run deploy   # applies new migrations to the real database, then deploys
 ```
 
-You rarely need `npm run deploy` by hand: every merge to `main` runs it from GitHub Actions (`.github/workflows/deploy.yml`) once the tests pass. That needs two repository secrets, `CLOUDFLARE_API_TOKEN` (the "Edit Cloudflare Workers" token template plus D1 Edit) and `CLOUDFLARE_ACCOUNT_ID`; without them the workflow skips the deploy with a warning. Run it again from the Actions tab (Deploy → Run workflow) to redeploy main.
+You don't need to deploy by hand: Cloudflare Workers Builds is connected to this repository, so every merge to `main` deploys the Worker to production, and every other branch gets a Preview build (the "Workers Builds: mbp-games" check on a PR or commit links to its log). Its deploy command is set in the dashboard (Worker → Settings → Builds); set it to `npm run deploy` so new D1 migrations go out with the code. Until then, a PR that adds a migration needs `npx wrangler d1 migrations apply mbp-games --remote` once after it merges.
 
 Point a local copy of the game at it with `?debug&accounts=http://localhost:8787`. In the Scrum City repo, `node tests/account-shots.mjs <folder>` (with this repo checked out next to it) plays the whole flow in a browser (guest, sign-in, sync on death, admin reset and ban) and saves screenshots.
 
