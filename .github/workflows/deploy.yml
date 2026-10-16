@@ -1,0 +1,37 @@
+name: Deploy
+
+# Every push to main deploys the Worker: new D1 migrations first, then the code (`npm run deploy`), once the tests pass.
+# Needs two repository secrets: CLOUDFLARE_API_TOKEN (the "Edit Cloudflare Workers" token template plus D1 Edit,
+# for the account and the atlesque.dev zone) and CLOUDFLARE_ACCOUNT_ID. Without them the job says so and skips the deploy.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# one deploy at a time, in order; a newer push waits rather than cancelling one that is half-way through its migrations
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set, so nothing was deployed"
+            exit 0
+          fi
+          npm run deploy
