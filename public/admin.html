@@ -42,6 +42,14 @@ const tabs = on => `<div class="row" style="gap:8px;margin-bottom:18px"><a class
 // one sign-in email: did it go out?
 const mailStatus = e => e.status === 'sent' ? '<span class="tag live">Sent</span>' : e.status === 'failed' ? `<span class="tag ban">Failed</span>${e.error ? ` <span class="small">${esc(e.error)}</span>` : ''}` : '<span class="tag">Not sent</span> <span class="small">no mail service, link only logged</span>';
 
+// one line about a player's progress in a game, from its summary in src/clients.js
+function summaryLine(g) {
+  const s = g.summary;
+  if (g.game === 'wingrid') return `${s.credits == null ? '–' : esc(s.credits.toLocaleString())} credits · ${s.spins} spins · biggest win ${esc(s.biggestWin.toLocaleString())} · ${s.features} free spins feature${s.features === 1 ? '' : 's'}`;
+  if (g.game === 'scrum-city') return `${money(s)} · ${s.kills} takedowns · five star heat ${clock(s.fiveStar)} · weapons: ${esc(s.weapons.join(', ') || 'none')}`;
+  return `<span class="small">${esc(JSON.stringify(s))}</span>`;
+}
+
 async function list() {
   let d;
   try { d = await api(`/api/admin/players?q=${encodeURIComponent(q)}&offset=${offset}`); } catch (e) { view.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
@@ -94,7 +102,7 @@ async function player(id) {
 <h2>Games</h2>
 ${p.games.map(g => `<div class="panel"><div class="top"><div><b>${esc(g.name)}</b><br><span class="small">Saved ${when(g.updatedAt)} · save #${g.rev}</span></div>
 <button class="sbtn danger" data-reset="${esc(g.game)}">Reset progress</button></div>
-${g.summary ? `<p>${money(g.summary)} · ${g.summary.kills} takedowns · five star heat ${clock(g.summary.fiveStar)} · weapons: ${esc(g.summary.weapons.join(', ') || 'none')}</p>` : '<p class="muted">Fresh start (no progress).</p>'}
+${g.summary ? `<p>${summaryLine(g)}</p>` : '<p class="muted">Fresh start (no progress).</p>'}
 ${g.data ? `<details><summary class="small">Raw save</summary><pre>${esc(JSON.stringify(g.data, null, 2))}</pre></details>` : ''}</div>`).join('') || '<p class="muted">No saved games yet.</p>'}
 <h2>Sign-in emails</h2>
 ${p.emails.length ? `<div class="card tablecard"><div class="scroll"><table><tbody>${p.emails.map(e => `<tr><td>${when(e.at)}</td><td>${mailStatus(e)}</td></tr>`).join('')}</tbody></table></div></div>` : '<p class="muted">None in the last 90 days.</p>'}
