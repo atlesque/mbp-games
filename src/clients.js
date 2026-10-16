@@ -20,6 +20,19 @@ export const GAMES = {
         fiveStar: d && d.stats ? Math.floor(d.stats.fiveStar || 0) : 0 };
     },
   },
+  wingrid: {
+    name: 'Wingrid',
+    url: 'https://wingrid.atlesque.dev/',
+    origins: [
+      'https://wingrid.atlesque.dev',
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+    ],
+    // free play credits only, nothing here is real money
+    summary(d) {
+      const s = (d && d.stats) || {};
+      return { credits: d && typeof d.credits === 'number' ? d.credits : null, spins: s.spins || 0, biggestWin: s.biggestWin || 0, features: s.features || 0 };
+    },
+  },
 };
 
 export function originAllowed(game, origin) {
