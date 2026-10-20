@@ -48,6 +48,7 @@ const mailStatus = e => e.status === 'sent' ? '<span class="tag live">Sent</span
 function summaryLine(g) {
   const s = g.summary;
   if (g.game === 'wingrid') return `${s.credits == null ? '–' : esc(s.credits.toLocaleString())} credits · ${s.spins} spins · biggest win ${esc(s.biggestWin.toLocaleString())} · ${s.features} free spins feature${s.features === 1 ? '' : 's'}`;
+  if (g.game === 'chordstand') return `${s.songs} song${s.songs === 1 ? '' : 's'}`;
   if (g.game === 'scrum-city') return `${money(s)} · ${s.kills} takedowns · five star heat ${clock(s.fiveStar)} · weapons: ${esc(s.weapons.join(', ') || 'none')}`;
   return `<span class="small">${esc(JSON.stringify(s))}</span>`;
 }

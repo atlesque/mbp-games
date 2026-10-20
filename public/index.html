@@ -59,7 +59,7 @@ fetch('/api/account').then(r => r.json()).then(a => {
   const last = a.games.reduce((t, g) => Math.max(t, g.updatedAt || 0), 0);
   // up to three [label, value, title] stats per game row, from its summary in src/clients.js
   const cells = s => !s ? [] : [
-    s.money != null ? ['Money', `$${s.money.toLocaleString()}`] : s.credits != null ? ['Credits', s.credits.toLocaleString()] : null,
+    s.money != null ? ['Money', `$${s.money.toLocaleString()}`] : s.credits != null ? ['Credits', s.credits.toLocaleString()] : s.songs != null ? ['Songs', s.songs.toLocaleString()] : null,
     s.weapons ? ['Weapons', s.weapons.length] : s.spins != null ? ['Spins', s.spins.toLocaleString()] : null,
     s.fiveStar != null ? ['5★ heat', clock(s.fiveStar), 'Total time spent at five stars'] : s.biggestWin != null ? ['Biggest win', s.biggestWin.toLocaleString()] : null,
   ];

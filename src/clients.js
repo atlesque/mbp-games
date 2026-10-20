@@ -3,6 +3,7 @@
 // `origins` are the pages allowed to send players here and receive them back (and to call the API);
 // `summary` turns a save into the few numbers the hub and admin page show.
 // `currency` is the number in the save an admin can top up, and what to call it.
+// `maxSave` (bytes) raises the default 64 KB save limit for a game whose save is a whole library.
 export const GAMES = {
   'scrum-city': {
     name: 'MBP - Scrum City',
@@ -36,7 +37,22 @@ export const GAMES = {
       return { credits: d && typeof d.credits === 'number' ? d.credits : null, spins: s.spins || 0, biggestWin: s.biggestWin || 0, features: s.features || 0 };
     },
   },
+  chordstand: {
+    name: 'Chordstand',
+    url: 'https://chordstand.atlesque.dev/',
+    origins: [
+      'https://chordstand.atlesque.dev',
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+    ],
+    // the save is the player's whole song library (compressed), so it gets more room than a game's
+    maxSave: 1024 * 1024,
+    summary(d) {
+      return { songs: d && typeof d.songs === 'number' ? d.songs : 0 };
+    },
+  },
 };
+
+export const maxSave = game => (GAMES[game] && GAMES[game].maxSave) || 64 * 1024;
 
 export function originAllowed(game, origin) {
   const g = GAMES[game];

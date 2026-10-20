@@ -1,4 +1,4 @@
-import { GAMES, anyGameOrigin, originAllowed, redirectAllowed } from './clients.js';
+import { GAMES, anyGameOrigin, maxSave, originAllowed, redirectAllowed } from './clients.js';
 import { sendSignInEmail, signInEmail } from './email.js';
 import { GameRoom } from './room.js';
 import { DAY, HOUR, HttpError, MIN, cookie, esc, getCookie, hash, json, normalizeEmail, now, pkceChallenge, randomToken, readJson } from './util.js';
@@ -11,7 +11,6 @@ import { DAY, HOUR, HttpError, MIN, cookie, esc, getCookie, hash, json, normaliz
 // (a Worker entry module may only export handlers, so these stay private)
 const LINK_TTL = 15 * MIN, CODE_TTL = 2 * MIN, SESSION_TTL = 90 * DAY;
 const WEB_COOKIE = 'mbpg_session';
-const MAX_SAVE = 64 * 1024;
 const LIMITS = { perEmail: [5, 15 * MIN], perIp: [20, HOUR] };
 
 // The site's old name. Its pages and sign-in links move to play.atlesque.dev; the game API and multiplayer
@@ -305,10 +304,10 @@ async function getProgress(req, env, game) {
 async function putProgress(req, env, game) {
   checkGame(req, game);
   const { user } = await gameAuth(req, env);
-  const body = await readJson(req, MAX_SAVE + 1024);
+  const max = maxSave(game), body = await readJson(req, max + 1024);
   if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) throw new HttpError(400, 'bad_data', 'Expected a save object.');
   const data = JSON.stringify(body.data), rev = Number.isInteger(body.rev) ? body.rev : 0, t = now(), db = env.DB;
-  if (data.length > MAX_SAVE) throw new HttpError(413, 'too_large', 'That save is too big.');
+  if (data.length > max) throw new HttpError(413, 'too_large', 'That save is too big.');
   const res = rev === 0
     ? await db.prepare('INSERT INTO progress (user_id, game, data, rev, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?) ON CONFLICT (user_id, game) DO NOTHING').bind(user.id, game, data, t, t).run()
     : await db.prepare('UPDATE progress SET data = ?, rev = rev + 1, updated_at = ? WHERE user_id = ? AND game = ? AND rev = ?').bind(data, t, user.id, game, rev).run();
