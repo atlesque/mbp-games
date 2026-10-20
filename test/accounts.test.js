@@ -160,6 +160,22 @@ describe('admin', () => {
     await call(`/api/admin/players/${row.id}/unban`, { method: 'POST', cookie: boss.cookie, origin: APP, body: {} });
     expect((await call('/api/me', { token: player.token, origin: GAME })).status).toBe(200);
   });
+  it('adds money to a save, and the game adopts it', async () => {
+    const player = await signIn('player@example.com'), boss = await signIn('boss@example.com');
+    const id = (await (await call('/api/admin/players', { cookie: boss.cookie })).json()).players.find(p => p.email === 'player@example.com').id;
+    const add = (game, amount) => call(`/api/admin/players/${id}/money`, { method: 'POST', cookie: boss.cookie, origin: APP, body: { game, amount } });
+    // nothing saved yet, so nothing to add to
+    expect((await add('scrum-city', 500)).status).toBe(400);
+    await call('/api/games/scrum-city/progress', { method: 'PUT', token: player.token, origin: GAME, body: { data: { v: 2, money: 4200 }, rev: 0 } });
+    for (const bad of [0, -5, 1.5, '500']) expect((await add('scrum-city', bad)).status).toBe(400);
+    expect((await add('nope', 500)).status).toBe(400);
+    expect((await add('scrum-city', 800)).status).toBe(200);
+    const after = await call('/api/games/scrum-city/progress', { method: 'PUT', token: player.token, origin: GAME, body: { data: { v: 2, money: 4300 }, rev: 1 } });
+    expect(after.status).toBe(409);
+    expect(await after.json()).toMatchObject({ data: { v: 2, money: 5000 }, rev: 2 });
+    const detail = await (await call(`/api/admin/players/${id}`, { cookie: boss.cookie })).json();
+    expect(detail.player.history[0]).toMatchObject({ action: 'money', game: 'scrum-city', detail: '+800 money' });
+  });
   it('lists pending registrations and whether their email went out', async () => {
     const boss = await signIn('boss@example.com'), player = await signIn('player@example.com');
     await call('/api/signin/start', { method: 'POST', origin: APP, body: { email: 'waiting@example.com' } });

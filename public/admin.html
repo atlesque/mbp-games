@@ -21,7 +21,7 @@
   <div id="view"><p><span class="spin"></span>Loading…</p></div>
 </main>
 <script>
-// Admin: every player, their games and progress; reset a game's progress, ban or unban, sign them out.
+// Admin: every player, their games and progress; add money or credits to a save, reset a game's progress, ban or unban, sign them out.
 // Pending: addresses that asked for a sign-in link but never opened one, and whether the email went out.
 const view = document.getElementById('view');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -29,6 +29,8 @@ const when = t => t ? new Date(t).toLocaleString(undefined, { dateStyle: 'medium
 // seconds as a clock: 75 -> '1:15', 3725 -> '1:02:05'
 const clock = s => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = String(Math.floor(s / 60) % 60), ss = String(s % 60).padStart(2, '0'); return h ? `${h}:${m.padStart(2, '0')}:${ss}` : `${m}:${ss}`; };
 const money = s => s && s.money != null ? '$' + s.money.toLocaleString() : '–';
+// what each game's top-up adds to (matches `currency` in src/clients.js)
+const CURRENCY = { 'scrum-city': 'money', wingrid: 'credits' };
 const avatar = email => `<span class="av">${esc(String(email || '?')[0])}</span>`;
 async function api(path, body) {
   const r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -101,7 +103,7 @@ async function player(id) {
 </div><div class="row">${p.bannedAt ? '<button class="sbtn" id="unban">Unban</button>' : '<button class="sbtn danger" id="ban">Ban</button>'}<button class="sbtn" id="signout">Sign out everywhere</button></div></div></div>
 <h2>Games</h2>
 ${p.games.map(g => `<div class="panel"><div class="top"><div><b>${esc(g.name)}</b><br><span class="small">Saved ${when(g.updatedAt)} · save #${g.rev}</span></div>
-<button class="sbtn danger" data-reset="${esc(g.game)}">Reset progress</button></div>
+<div class="row">${g.data && CURRENCY[g.game] ? `<button class="sbtn" data-money="${esc(g.game)}">Add ${CURRENCY[g.game]}</button>` : ''}<button class="sbtn danger" data-reset="${esc(g.game)}">Reset progress</button></div></div>
 ${g.summary ? `<p>${summaryLine(g)}</p>` : '<p class="muted">Fresh start (no progress).</p>'}
 ${g.data ? `<details><summary class="small">Raw save</summary><pre>${esc(JSON.stringify(g.data, null, 2))}</pre></details>` : ''}</div>`).join('') || '<p class="muted">No saved games yet.</p>'}
 <h2>Sign-in emails</h2>
@@ -111,6 +113,13 @@ ${p.history.length ? `<div class="card tablecard"><div class="scroll"><table><tb
   document.getElementById('ban')?.addEventListener('click', () => { const reason = prompt(`Ban ${p.email}? Reason (shown to the player, optional):`); if (reason !== null) act('ban', { reason }); });
   document.getElementById('unban')?.addEventListener('click', () => act('unban'));
   document.getElementById('signout').addEventListener('click', () => act('signout', null, `Sign ${p.email} out of every game and browser?`));
+  for (const b of view.querySelectorAll('[data-money]')) b.addEventListener('click', () => {
+    const what = CURRENCY[b.dataset.money], v = prompt(`How much ${what} to add to ${p.email}'s save?`);
+    if (v === null) return;
+    const amount = Number(v.replace(/[\s,$]/g, ''));
+    if (!Number.isInteger(amount) || amount <= 0) { alert('Enter a whole amount above zero.'); return; }
+    act('money', { game: b.dataset.money, amount }, `Add ${amount.toLocaleString()} ${what} to ${p.email}'s save?`);
+  });
   for (const b of view.querySelectorAll('[data-reset]')) b.addEventListener('click', () => act('reset', { game: b.dataset.reset }, `Reset ${p.email}'s progress in this game to a fresh start? This can't be undone.`));
 }
 
