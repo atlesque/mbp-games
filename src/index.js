@@ -349,7 +349,7 @@ async function admin(req, env, url) {
         last: { at: l.at, status: l.status, error: l.error, game: l.client && GAMES[l.client] ? GAMES[l.client].name : l.client, linkOpen: l.status !== 'failed' && l.at + LINK_TTL > now() } };
     }) });
   }
-  const pm = p.match(/^\/api\/admin\/players\/([0-9a-f-]{36})(?:\/(reset|ban|unban|signout))?$/);
+  const pm = p.match(/^\/api\/admin\/players\/([0-9a-f-]{36})(?:\/(reset|money|ban|unban|signout))?$/);
   if (!pm) throw new HttpError(404, 'not_found', 'No such endpoint.');
   const u = await db.prepare('SELECT * FROM users WHERE id = ?').bind(pm[1]).first();
   if (!u) throw new HttpError(404, 'unknown_player', 'No such player.');
@@ -369,6 +369,19 @@ async function admin(req, env, url) {
     // the row stays with a higher rev, so the game's next save conflicts and adopts the fresh start
     await db.prepare('UPDATE progress SET data = NULL, rev = rev + 1, updated_at = ? WHERE user_id = ? AND game = ?').bind(now(), u.id, body.game).run();
     await log('reset', u.id, body.game);
+  } else if (action === 'money') {
+    const g = GAMES[body.game], amount = body.amount;
+    if (!g || !g.currency) throw new HttpError(400, 'unknown_game', 'Pick a game to add money to.');
+    if (!Number.isInteger(amount) || amount <= 0 || amount > 1e9) throw new HttpError(400, 'bad_amount', 'Enter a whole amount above zero.');
+    const r = await db.prepare('SELECT data, rev FROM progress WHERE user_id = ? AND game = ?').bind(u.id, body.game).first();
+    const d = r && r.data ? JSON.parse(r.data) : null;
+    if (!d) throw new HttpError(400, 'no_save', 'This player has no save in that game yet.');
+    const k = g.currency.key;
+    d[k] = (typeof d[k] === 'number' ? d[k] : 0) + amount;
+    // same as a reset: the higher rev makes the game's next save conflict and adopt this copy
+    const res = await db.prepare('UPDATE progress SET data = ?, rev = rev + 1, updated_at = ? WHERE user_id = ? AND game = ? AND rev = ?').bind(JSON.stringify(d), now(), u.id, body.game, r.rev).run();
+    if (!res.meta.changes) throw new HttpError(409, 'conflict', 'The player just saved. Try again.');
+    await log('money', u.id, body.game, `+${amount.toLocaleString('en-US')} ${g.currency.label}`);
   } else if (action === 'ban') {
     const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 300) : '';
     // sessions stay, so the player's game hears "banned" (403) rather than just "signed out"

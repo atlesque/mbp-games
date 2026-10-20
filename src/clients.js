@@ -1,7 +1,8 @@
 // ================= GAMES =================
 // Every game that signs players in with an Atlesque account. A game's id is also its client id.
 // `origins` are the pages allowed to send players here and receive them back (and to call the API);
-// `summary` turns a save into the few numbers the admin page shows.
+// `summary` turns a save into the few numbers the hub and admin page show.
+// `currency` is the number in the save an admin can top up, and what to call it.
 export const GAMES = {
   'scrum-city': {
     name: 'MBP - Scrum City',
@@ -12,6 +13,7 @@ export const GAMES = {
       /^https:\/\/[a-z0-9-]+\.mbp-scrum-city\.pages\.dev$/, // Cloudflare Pages previews
       /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
     ],
+    currency: { key: 'money', label: 'money' },
     summary(d) {
       const w = (d && d.weapons) || {};
       const owned = Object.keys(w.owned || {}).filter(id => w.owned[id] && id !== 'fist');
@@ -28,6 +30,7 @@ export const GAMES = {
       /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
     ],
     // free play credits only, nothing here is real money
+    currency: { key: 'credits', label: 'credits' },
     summary(d) {
       const s = (d && d.stats) || {};
       return { credits: d && typeof d.credits === 'number' ? d.credits : null, spins: s.spins || 0, biggestWin: s.biggestWin || 0, features: s.features || 0 };
