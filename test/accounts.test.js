@@ -125,6 +125,16 @@ describe('progress sync', () => {
     expect(await (await call(p, { method: 'PUT', token, origin: GAME, body: { data: save(1200), rev: 1 } })).json()).toMatchObject({ rev: 2 });
     expect(await (await call(p, { token, origin: GAME })).json()).toMatchObject({ rev: 2, data: { money: 1200 } });
   });
+  it('gives Chordstand room for a whole song library, and other games 64 KB', async () => {
+    const { token } = await signIn();
+    const CS = 'https://chordstand.atlesque.dev', big = { v: 1, songs: 300, z: 'x'.repeat(200 * 1024) };
+    const ok = await call('/api/games/chordstand/progress', { method: 'PUT', token, origin: CS, body: { data: big, rev: 0 } });
+    expect(await ok.json()).toMatchObject({ rev: 1 });
+    expect((await call('/api/games/chordstand/progress', { method: 'PUT', token, origin: CS, body: { data: { ...big, z: 'x'.repeat(1100 * 1024) }, rev: 1 } })).status).toBe(413);
+    expect((await call('/api/games/scrum-city/progress', { method: 'PUT', token, origin: GAME, body: { data: big, rev: 0 } })).status).toBe(413);
+    expect(redirectAllowed('chordstand', `${CS}/`)).toBe(true);
+    expect(redirectAllowed('chordstand', 'https://chordstand.evil.example/')).toBe(false);
+  });
   it('needs a token and a game page', async () => {
     const { token } = await signIn();
     expect((await call('/api/games/scrum-city/progress', { origin: GAME })).status).toBe(401);

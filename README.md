@@ -2,7 +2,7 @@
 
 One account for every Atlesque game: players sign in once with their email and their progress in each game is saved to it. A Cloudflare Worker with a D1 database, at **https://play.atlesque.dev**.
 
-The first game on it is [MBP - Scrum City](https://github.com/atlesque/mbp-scrum-city).
+The first game on it is [MBP - Scrum City](https://github.com/atlesque/mbp-scrum-city). [Wingrid](https://github.com/atlesque/wingrid) and the [Chordstand](https://github.com/atlesque/chordstand) song app sign in with it too.
 
 ## What players see
 
@@ -25,7 +25,7 @@ There are no passwords. A link works once and runs out after 15 minutes; an emai
 4. Send the token as `Authorization: Bearer <token>`:
    - `GET /api/me` → `{ user }`
    - `GET /api/games/<game>/progress` → `{ data, rev, updatedAt }` (`data` is `null` before the first save, or after an admin reset)
-   - `PUT /api/games/<game>/progress` with `{ data, rev }`, where `rev` is the one you last read or wrote (0 for none). Answers `{ rev }`, or **409** with the account's current `{ data, rev }` when it moved on without you (another device, an admin reset): adopt that copy. Saves are JSON objects up to 64 KB.
+   - `PUT /api/games/<game>/progress` with `{ data, rev }`, where `rev` is the one you last read or wrote (0 for none). Answers `{ rev }`, or **409** with the account's current `{ data, rev }` when it moved on without you (another device, an admin reset): adopt that copy. Saves are JSON objects up to 64 KB, or the game's `maxSave` in `src/clients.js` (Chordstand, which saves a whole song library, gets 1 MB); bigger ones get **413**.
    - `POST /api/logout` ends the token.
    - **401** means the token is gone (signed out everywhere); **403** with `error: "banned"` means the account is banned and `message` says why.
 
