@@ -23,9 +23,10 @@ function call(path, { method = 'GET', body, origin, cookie, token, form } = {}) 
 const cookieOf = res => (res.headers.get('set-cookie') || '').split(';')[0];
 
 // the whole trip: the game sends the player to /signin, they get an email, open the link, the waiting tab carries on
-async function signIn(email = 'player@example.com') {
+async function signIn(email = 'player@example.com', client = 'scrum-city', origin = GAME) {
+  const redirect = `${origin}/`;
   const verifier = 'v'.repeat(50), challenge = await pkceChallenge(verifier);
-  const target = { client: 'scrum-city', redirect_uri: BACK, state: 's1', code_challenge: challenge };
+  const target = { client, redirect_uri: redirect, state: 's1', code_challenge: challenge };
   const start = await call('/api/signin/start', { method: 'POST', origin: APP, body: { email, ...target } });
   expect(start.status).toBe(200);
   const { request, poll } = await start.json();
@@ -40,9 +41,9 @@ async function signIn(email = 'player@example.com') {
   const d = await done.json();
   expect(d.status).toBe('done');
   const back = new URL(d.redirect);
-  expect(back.origin + back.pathname).toBe(BACK);
+  expect(back.origin + back.pathname).toBe(redirect);
   expect(back.searchParams.get('mbpg_state')).toBe('s1');
-  const tok = await call('/api/token', { method: 'POST', origin: GAME, body: { code: back.searchParams.get('mbpg_code'), code_verifier: verifier, client: 'scrum-city', redirect_uri: BACK } });
+  const tok = await call('/api/token', { method: 'POST', origin, body: { code: back.searchParams.get('mbpg_code'), code_verifier: verifier, client, redirect_uri: redirect } });
   expect(tok.status).toBe(200);
   return { ...(await tok.json()), cookie: cookieOf(done), code: back.searchParams.get('mbpg_code'), verifier, request, poll };
 }
@@ -202,5 +203,28 @@ describe('admin', () => {
     const list = await (await call('/api/admin/players', { cookie: boss.cookie })).json();
     const detail = await (await call(`/api/admin/players/${list.players.find(p => p.email === 'player@example.com').id}`, { cookie: boss.cookie })).json();
     expect(detail.player.emails.map(e => e.status)).toEqual(['sent']);
+  });
+});
+
+
+describe('Expedition 33 account storage', () => {
+  it('registers guide sign-in and persists private progress with conflict protection', async () => {
+    const origin = 'https://coe33.atlesque.dev', path = '/api/games/expedition-33-guide/progress';
+    expect(redirectAllowed('expedition-33-guide', origin + '/')).toBe(true);
+    expect(redirectAllowed('expedition-33-guide', 'https://evil.example/')).toBe(false);
+    const account = await signIn('guide@example.com', 'expedition-33-guide', origin);
+    const body = { data: { version: 1, save: { playthroughs: [{ id: 'run1', name: 'Evening run' }] } }, rev: 0 };
+    expect((await call(path, { origin })).status).toBe(401);
+    const saved = await call(path, { origin, token: account.token, method: 'PUT', body });
+    expect(saved.status).toBe(200);
+    expect(saved.headers.get('access-control-allow-origin')).toBe(origin);
+    const restored = await (await call(path, { origin, token: account.token })).json();
+    expect(restored.data).toEqual(body.data);
+    expect(restored.rev).toBe(1);
+    const stale = await call(path, { origin, token: account.token, method: 'PUT', body });
+    expect(stale.status).toBe(409);
+    expect((await stale.json()).data).toEqual(body.data);
+    const other = await signIn('other-guide@example.com', 'expedition-33-guide', origin);
+    expect((await (await call(path, { origin, token: other.token })).json()).data).toBe(null);
   });
 });

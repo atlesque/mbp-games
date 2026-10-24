@@ -5,6 +5,20 @@
 // `currency` is the number in the save an admin can top up, and what to call it.
 // `maxSave` (bytes) raises the default 64 KB save limit for a game whose save is a whole library.
 export const GAMES = {
+  'expedition-33-guide': {
+    name: 'Clair Obscur: Expedition 33 Guide',
+    url: 'https://coe33.atlesque.dev/',
+    origins: [
+      'https://coe33.atlesque.dev',
+      'https://clair-obscur-expedition-33-guide.pages.dev',
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+    ],
+    maxSave: 256 * 1024,
+    summary(d) {
+      const runs = d?.save?.playthroughs;
+      return { playthroughs: Array.isArray(runs) ? runs.length : 0 };
+    },
+  },
   'scrum-city': {
     name: 'MBP - Scrum City',
     url: 'https://mbp-scrum-city.atlesque.dev/',
