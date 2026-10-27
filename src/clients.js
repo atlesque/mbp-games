@@ -51,6 +51,19 @@ export const GAMES = {
       return { credits: d && typeof d.credits === 'number' ? d.credits : null, spins: s.spins || 0, biggestWin: s.biggestWin || 0, features: s.features || 0 };
     },
   },
+  // the team's draw-and-guess game; signing in is optional (guests play too), the save only holds totals for the hub
+  sketch: {
+    name: 'Sketch',
+    url: 'https://sketch.atlesque.dev/',
+    origins: [
+      'https://sketch.atlesque.dev',
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+    ],
+    summary(d) {
+      const s = (d && d.stats) || {};
+      return { games: s.games || 0, wins: s.wins || 0, points: s.points || 0 };
+    },
+  },
   chordstand: {
     name: 'Chordstand',
     url: 'https://chordstand.atlesque.dev/',
